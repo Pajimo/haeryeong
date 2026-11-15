@@ -1,6 +1,12 @@
 # 해령 HAERYEONG — A Living Kingdom
 
+**▶ Play it: <https://pajimo.github.io/haeryeong/>** — no install, runs in any desktop browser.
+
 A life-sim set in an original Joseon / Three-Kingdoms-inspired valley. It plays like The Sims: villagers have needs and make their own choices. It also has third-person sword combat. Runs in the browser with Three.js.
+
+Every push to `main` rebuilds and redeploys the live version automatically
+(`.github/workflows/deploy.yml`). The AI dialogue is optional — it asks for your own Anthropic API key
+in ⚙ Settings, stores it only in your browser, and everything else works without it.
 
 ## Run
 
