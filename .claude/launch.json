@@ -1,0 +1,28 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "haeryeong",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "haeryeong-test",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "vite",
+        "preview",
+        "--outDir",
+        "charpipe/dist-test",
+        "--port",
+        "4174",
+        "--strictPort"
+      ],
+      "port": 4174
+    }
+  ]
+}

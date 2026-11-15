@@ -1,0 +1,10 @@
+node_modules
+dist
+
+# third-party MakeHuman/MPFB2 downloads and Blender intermediates (hundreds of MB, regenerable)
+charpipe/downloads
+charpipe/out
+charpipe/__pycache__
+*.pyc
+
+.DS_Store

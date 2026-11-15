@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Haeryeong · 해령 — A Living Kingdom</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Nanum+Myeongjo:wght@400;700;800&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles.css" />
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="ui"></div>
+  <div id="photobar" class="hidden"></div>
+  <div id="title">
+    <div class="t-inner">
+      <div class="seal">海嶺</div>
+      <h1>해령</h1>
+      <h2>HAERYEONG</h2>
+      <p class="tag">A living kingdom of silk, steel and autumn wind</p>
+      <div id="loading"><div class="lbar"><i></i></div><span id="lmsg">Preparing ink and brush…</span></div>
+      <div id="t-menu" class="hidden">
+        <button id="t-begin">Begin · 시작</button>
+        <div class="t-opts">
+          <label>Graphics <select id="t-quality"><option value="high">High</option><option value="medium">Balanced</option></select></label>
+          <label>Seed <input id="t-seed" type="number" value="1337"></label>
+          <label>Season <select id="t-season"><option value="spring">🌸 Spring</option><option value="summer">☀ Summer</option><option value="autumn">🍁 Autumn</option><option value="winter">❄ Winter</option></select></label>
+        </div>
+        <p class="t-help">You lead a small household of your own making, with a sibling and a grandmother, in a valley where every villager lives, loves, feuds and fights by their own will.</p>
+      </div>
+    </div>
+  </div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
