@@ -325,9 +325,54 @@ export function createMissionsSystem(G) {
       return null;
     },
 
+    // A household member left to their own devices will take work that suits them, rather than waiting
+    // to be told. Gated entirely on the "Free will" switch in their panel: turn it off and nobody acts
+    // without you. Only one mission runs at a time, as before, so this never steals one you wanted.
+    selfAssign() {
+      if (this.active || !this.offers.length) return;
+      const cat = catalogue(G);
+      for (const s of G.household) {
+        if (s.dead || !s.freeWill || s.controlled || s.hidden || s.age === 'child' || s.missionLock) continue;
+        const leaning = this.leaning(s);
+        for (const offer of this.offers) {
+          const m = cat.find((x) => x.id === offer.id); if (!m) continue;
+          if (this.canTake(s, m)) continue;
+          const want = leaning[m.path] || 0; if (want <= 0) continue;
+          if (Math.random() > want * 0.5) continue;
+          this.start(s, offer);
+          G.ui?.toast(`${s.name.given} has taken this on: “${m.title}”`);
+          G.log(`${s.name.full} took the task on ${s.sex === 'f' ? 'her' : 'his'} own account — it suits ${s.sex === 'f' ? 'her' : 'him'}.`, 'story', s.pos);
+          return;
+        }
+      }
+    },
+    // how much each fame path suits them, from their life goal, their trade and their temper
+    leaning(s) {
+      const w = { blade: 0, shadow: 0, trade: 0, law: 0, heart: 0, hunt: 0 };
+      const asp = G.systems.find((x) => x.id === 'aspirations')?.data?.[s.id]?.asp || null;
+      if (asp === 'blade') w.blade += 1.1;
+      if (asp === 'shadow') w.shadow += 1.1;
+      if (asp === 'wealth') w.trade += 1.0;
+      if (asp === 'friend' || asp === 'love') w.heart += 0.9;
+      if (asp === 'throne' || asp === 'scholar') w.law += 0.7;
+      const job = { swordsman: 'blade', soldier: 'blade', general: 'blade', police: 'law', merchant: 'trade', innkeeper: 'trade', hunter: 'hunt', bandit: 'shadow', monk: 'heart', scholar: 'law' }[s.job];
+      if (job) w[job] += 0.8;
+      if (s.has?.('Brave')) w.blade += 0.5;
+      if (s.has?.('Hot-headed')) w.blade += 0.3;
+      if (s.has?.('Cunning')) w.shadow += 0.5;
+      if (s.has?.('Greedy')) w.trade += 0.5;
+      if (s.has?.('Gentle') || s.has?.('Pious')) w.heart += 0.5;
+      if (s.has?.('Loyal')) w.law += 0.4;
+      if ((s.skills?.sword || 0) > 5) w.blade += 0.4;
+      if ((s.skills?.archery || 0) > 4) w.hunt += 0.4;
+      return w;
+    },
+
     update(dt, gm) {
       // offers & giver markers
       this.offerT -= gm; if (this.offerT <= 0) { this.offerT = 120; this.refreshOffers(); }
+      this.selfT = (this.selfT || 0) - gm;
+      if (this.selfT <= 0) { this.selfT = 45; try { this.selfAssign(); } catch (e) { console.error('[missions] selfAssign', e); } }
       const want = new Set();
       for (const o of this.offers) { const g = o.giver; if (!g || g.dead || g.hidden) continue; if (catalogue && (o.id === 'taxman' || o.id === 'jadeseal' || o.id === 'poison') && !G.household.some((h) => h.factions?.lotus)) continue; want.add(g);
         let sp = this.markers.get(g); if (!sp) { sp = new THREE.Sprite(this.markerMat); sp.scale.setScalar(0.55); G.scene.add(sp); this.markers.set(g, sp); }

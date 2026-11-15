@@ -7,6 +7,9 @@ import { bodyGeometry, headGeometry, hairGeometry, handGeometry, paletteMaterial
 
 // Shared materials (vertex colored) — few programs, many characters
 const FWD = /* the sword mesh's own blade axis */ new THREE.Vector3(0, 0, 1);
+const TAU = Math.PI * 2;
+const SIDES = ['l', 'r'];
+const V1 = new THREE.Vector3(), V2 = new THREE.Vector3(), V3 = new THREE.Vector3();
 const GUARD = 1.72; // radians the point is lifted above the line of the forearm (blade level, forward)
 export const CHAR_MATS = {
   body: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 }),
@@ -405,6 +408,18 @@ export class Character {
   }
   setBumpSize(k) { if (this.bump) this.bump.scale.setScalar(0.3 + k * 0.75); }
 
+  // How far the body actually moved along the ground since the last frame. Measured from the root rather
+  // than taken from the requested speed, so a villager pressed against a fence or a door stops striding
+  // instead of marching on the spot. Teleports (the stuck-recovery step) are clamped out.
+  groundStep(dt, speed) {
+    const x = this.root.position.x, z = this.root.position.z;
+    let ds = 0;
+    if (this._gx !== undefined) ds = Math.hypot(x - this._gx, z - this._gz);
+    this._gx = x; this._gz = z;
+    const cap = Math.max(0.02, (speed || 1.4) * dt * 2.5); // ignore a jump across the map
+    if (ds > cap) ds = 0;
+    return ds;
+  }
   setAnim(name, snap = 10) {
     if (this.anim !== name) {
       this.anim = name; this.animT = 0; this.snap = snap;
@@ -471,10 +486,16 @@ export class Character {
 
     if (A === 'walk' || A === 'run' || A === 'sneak' || A === 'flee') {
       const run = A === 'run' || A === 'flee';
-      const fr = run ? 9.5 : 6.2 * clamp(speed / 1.4, 0.6, 1.4);
-      this.phase += dt * fr;
-      const p = this.phase;
       const sw = run ? 0.85 : (f ? 0.32 : 0.5);
+      // Stride driven by ground covered, not by elapsed time. The old `phase += dt * frequency`, with the
+      // rate clamped to 0.6-1.4x, meant the legs cycled at a rate unrelated to how fast the body was
+      // actually travelling, so the feet skated — the standard cause of foot sliding. One full cycle now
+      // advances the body by exactly one stride, so a foot on the ground stays roughly where it was put,
+      // a slow walker takes slow steps, and someone wedged against a wall stops stepping altogether.
+      const legs = this.legLen || 0.85;
+      const stride = Math.max(0.35, 4 * legs * Math.sin(sw) * (run ? 1.25 : 1));
+      this.phase += TAU * this.groundStep(dt, speed) / stride;
+      const p = this.phase;
       T.lHip.x = Math.sin(p) * sw; T.rHip.x = -Math.sin(p) * sw;
       T.lKnee.x = Math.max(0, -Math.cos(p)) * (run ? 1.5 : 0.75) + 0.08; T.rKnee.x = Math.max(0, Math.cos(p)) * (run ? 1.5 : 0.75) + 0.08;
       T.lFoot.x = -Math.sin(p) * 0.2; T.rFoot.x = Math.sin(p) * 0.2;
@@ -660,6 +681,7 @@ export class Character {
     ro.y = damp(ro.y, rt.y, k * 0.8, dt); ro.rx = damp(ro.rx, rt.rx, 6, dt); ro.rz = damp(ro.rz, rt.rz, 6, dt); ro.fwd = damp(ro.fwd, rt.fwd, k, dt);
     this.body.position.set(0, ro.y, ro.fwd);
     this.body.rotation.set(ro.rx, 0, ro.rz);
+    this.footIK(dt);
     if (ro.rx < -0.5) this.body.position.y = ro.y; // lying
     // blink & mouth
     this.blinkT -= dt;
@@ -668,6 +690,50 @@ export class Character {
     const closed = this.anim === 'sleep' || this.anim === 'dead' || this.anim === 'pray';
     if (this.eyes) this.eyes.scale.y = closed || this.blink > 0 ? 0.12 : 1;
     this.mouth *= 0.9;
+  }
+
+
+  // ---------- foot locking ----------
+  // Matching the stride to ground speed gets the average right, but the leg swings as a sine while the
+  // body travels at a constant rate, so the planted foot still drifted about 30 cm every step. This pins
+  // the standing foot to the spot where it landed and bends the leg to reach it: an analytic two-bone
+  // solve (law of cosines) in the character's own sagittal plane, which is the plane the walk animates
+  // in anyway. The weight eases in and out across the stance so there is no pop at heel-strike or lift.
+  footIK(dt) {
+    const A = this.anim;
+    if (A !== 'walk' && A !== 'run' && A !== 'sneak' && A !== 'flee') { this.plant = null; return; }
+    if (this.lod >= 2) { this.plant = null; return; } // nobody can see feet at that range
+    const B = this.bones; if (!B.lHip || !B.lFoot) return;
+    this.root.updateMatrixWorld(true);
+    const p = this.phase;
+    this.plant = this.plant || {};
+    for (const side of SIDES) {
+      const hipB = B[side + 'Hip'], kneeB = B[side + 'Knee'], footB = B[side + 'Foot'];
+      // left leg carries the weight while its knee is straight (cos p >= 0); the right is opposite
+      const c = side === 'l' ? Math.cos(p) : -Math.cos(p);
+      const st = this.plant[side] || (this.plant[side] = { on: false });
+      if (c <= 0) { st.on = false; continue; }          // swinging: let the animation run free
+      footB.getWorldPosition(V1);
+      if (!st.on) { st.on = true; st.x = V1.x; st.y = V1.y; st.z = V1.z; }  // heel-strike: remember the spot
+      // ease in over the first and last fifth of the contact, so the correction never snaps on
+      const w = Math.min(1, Math.min(c, 1 - c) * 5 + 0.15);
+      // solve in root-local space: hip joint, and the spot the foot should still be standing on
+      hipB.getWorldPosition(V2); this.root.worldToLocal(V2);
+      V3.set(st.x, st.y, st.z); this.root.worldToLocal(V3);
+      const a = kneeB.position.length(), b2 = footB.position.length();
+      let dy = V3.y - V2.y, dz = V3.z - V2.z;
+      let d = Math.hypot(dy, dz);
+      const lo = Math.abs(a - b2) + 0.02, hi = a + b2 - 0.02;
+      if (d < lo) { const k2 = lo / (d || 1e-6); dy *= k2; dz *= k2; d = lo; }
+      else if (d > hi) { const k2 = hi / d; dy *= k2; dz *= k2; d = hi; }
+      // law of cosines: the angle at the knee, and the thigh's offset from the hip-to-ankle line
+      const knee = Math.PI - Math.acos(clamp((a * a + b2 * b2 - d * d) / (2 * a * b2), -1, 1));
+      const alpha = Math.acos(clamp((a * a + d * d - b2 * b2) / (2 * a * d), -1, 1));
+      // positive rotation.x swings the leg backward in this rig, so the aim is atan2(-dz, -dy)
+      const hip = Math.atan2(-dz, -dy) - alpha;
+      hipB.rotation.x += (hip - hipB.rotation.x) * w;
+      kneeB.rotation.x += (knee - kneeB.rotation.x) * w;
+    }
   }
 
   _atkPose(T, R, stage, idx) {

@@ -384,6 +384,39 @@ The commissioner gains honour and fame. Rulers can also quietly skim the treasur
 - **Click a family member** for their menu: talk, court, try for a baby, allowance, tutor and so on. *👤 Control* switches to them; clicking their portrait (top left) also switches.
 - **Click yourself, or press ☰ Options in your panel,** for your own options: Land & Housing office, matchmaker, offices you hold, standing for headman, family rites and "I'm stuck".
 
+## Footsteps
+
+Feet used to skate along the ground. Two separate causes, and the fix needed both — which matches the
+published practice: IK only grounds a foot vertically, while horizontal sliding comes from the play rate
+not matching travel speed.
+
+**1. The stride now comes from distance covered, not elapsed time.** The walk advanced its phase as
+`phase += dt * frequency`, with the rate clamped to 0.6–1.4x, so the legs cycled at a rate that had
+nothing to do with how fast the body was actually moving — a slow walker's legs ran at the 0.6x floor
+regardless. One full cycle now advances the body by exactly one stride
+(`4 * legLength * sin(swingAngle)`), measured from the character root rather than from the requested
+speed, so someone wedged against a fence stops stepping instead of marching on the spot.
+
+**2. The standing foot is pinned where it landed.** Matching the stride fixes the average, but the leg
+swings as a sine while the body travels at a constant rate, so a planted foot still drifted. At
+heel-strike the foot's world position is remembered, and for the rest of the stance the leg is bent to
+keep reaching it — an analytic two-bone solve (law of cosines) in the character's own sagittal plane,
+which is the plane the walk animates in anyway. The correction eases in and out across the stance so
+there is no pop at heel-strike or lift-off.
+
+Measured over 24 walking villagers, median drift of the planted foot across one stance:
+**14.5 cm → 6.8 cm**. The IK costs **0.057 ms a frame** and runs only on characters inside mid range —
+past that nobody can see feet, so it is skipped.
+
+## Taking work unasked
+
+A free-willed member of your household will now accept a task that suits them instead of waiting to be
+told. `missions.js` scores every open offer against the person: their life goal, their trade, their
+temper and their skills all weight the six fame paths, and they take work on a path that fits. The
+innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
+
+It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
+without you. Only one mission runs at a time, as before, so this can never take one you wanted.
 ## Family life
 
 `src/family.js`. Spouses used to be independent atoms who shared an address and a `spouse` pointer and
