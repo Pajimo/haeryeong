@@ -6,6 +6,8 @@ import { faceFor, skinMaterial, eyeMaterial, browMaterial, lashMaterial, HC } fr
 import { bodyGeometry, headGeometry, hairGeometry, handGeometry, paletteMaterial, hairMaterial, jointsFor, silhouetteFor, PAL, BONE_ORDER, irisTexture, corneaMat } from './charbody.js';
 
 // Shared materials (vertex colored) — few programs, many characters
+const FWD = /* the sword mesh's own blade axis */ new THREE.Vector3(0, 0, 1);
+const GUARD = 1.72; // radians the point is lifted above the line of the forearm (blade level, forward)
 export const CHAR_MATS = {
   body: new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0 }),
   silk: new THREE.MeshPhysicalMaterial({ vertexColors: true, roughness: 0.55, sheen: 0.6, sheenRoughness: 0.5, sheenColor: new THREE.Color('#fff4e0') }),
@@ -332,7 +334,32 @@ export class Character {
     this.root.parent?.remove(this.root);
   }
 
-  draw() { if (!this.sword) return; this.swordDrawn = true; this.bones.rHand.add(this.sword); this.sword.position.set(0, -0.06, 0.01); this.sword.rotation.set(0.15, 0, 0); }
+  // Put the blade in the hand and point it along the line of the forearm. The old fixed rotation was
+  // tuned for the hand-built rig, where the arm hung straight down and the hand bone's axes happened to
+  // line up; on a MakeHuman body the arm is bound 0.32 rad out from vertical, so that same rotation laid
+  // the sword diagonally across the character's back instead of in their grip.
+  draw() {
+    if (!this.sword) return;
+    this.swordDrawn = true;
+    this.bones.rHand.add(this.sword);
+    this.sword.position.set(0, -0.06, 0.01);
+    this.aimSword();
+  }
+  aimSword() {
+    const sw = this.sword; if (!sw || !this.swordDrawn) return;
+    this.root.updateMatrixWorld(true);
+    const a = new THREE.Vector3(), b = new THREE.Vector3();
+    this.bones.rElbow.getWorldPosition(a); this.bones.rHand.getWorldPosition(b);
+    const dir = b.sub(a);
+    if (dir.lengthSq() < 1e-8) { sw.rotation.set(0.15, 0, 0); return; }
+    dir.normalize();
+    // into the hand bone's own space, so the result is right whatever the rig or the pose
+    const inv = new THREE.Matrix4().extractRotation(this.bones.rHand.matrixWorld).invert();
+    dir.applyMatrix4(inv).normalize();
+    sw.quaternion.setFromUnitVectors(FWD, dir);
+    // then raise the point to a guard angle rather than letting it hang straight down the arm
+    sw.rotateX(-GUARD);
+  }
   sheathe() { if (!this.sword) return; this.swordDrawn = false; this.scabbard.add(this.sword); this.sword.position.set(0, 0, 0.14); this.sword.rotation.set(Math.PI, 0, 0); this.sword.position.z = 0.0; this.sword.rotation.set(0, 0, 0); this.sword.position.set(0, 0, -0.06); }
   swordTip(out) { if (!this.sword) return null; return this.sword.localToWorld(out.set(0, 0, 0.92)); }
   swordBase(out) { if (!this.sword) return null; return this.sword.localToWorld(out.set(0, 0, 0.15)); }
@@ -379,7 +406,11 @@ export class Character {
   setBumpSize(k) { if (this.bump) this.bump.scale.setScalar(0.3 + k * 0.75); }
 
   setAnim(name, snap = 10) {
-    if (this.anim !== name) { this.anim = name; this.animT = 0; this.snap = snap; }
+    if (this.anim !== name) {
+      this.anim = name; this.animT = 0; this.snap = snap;
+      // the arm sits differently in each pose, so a drawn blade re-finds the line of the forearm
+      if (this.swordDrawn) this.aimSword();
+    }
   }
 
   // ---------- Procedural animation ----------

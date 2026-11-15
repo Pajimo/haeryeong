@@ -26,6 +26,15 @@ export class Game {
   //   id, init(G), update(dt, gm), onEvent(name, payload), serialize(), restore(data),
   //   simMenuItems(me, other), objMenuItems(me, obj), animalMenuItems(me, animal), panelHtml(sim)
   get aliveCount() { let n = 0; for (const s of this.sims) if (!s.dead) n++; return n; }
+  // How many souls the valley can feed, derived from the houses actually standing rather than a fixed
+  // number. The old hard-coded birth gates (105 and 110) sat BELOW the starting population of ~125, so
+  // they were false from the first frame and no villager could ever conceive — every child in the game
+  // was the player's. Building more houses now genuinely makes room for more families.
+  get popCap() {
+    let homes = 0;
+    for (const h of this.world?.houses || []) if (!h.virtual) homes += h.tier === 'mansion' ? 6 : h.tier === 'house' ? 5 : h.tier === 'cottage' ? 4 : 3;
+    return Math.max(120, Math.round(homes + 36)); // + the palace, barracks, temple and bandit camp
+  }
   registerSystem(sys) { this.systems.push(sys); sys.init?.(this); return sys; }
   emit(name, payload) { for (const s of this.systems) { try { s.onEvent?.(name, payload); } catch (e) { console.error(`[${s.id}] onEvent ${name}`, e); } } }
   // Lets a system take over a sim's next decision. The first system to return truthy claims the sim,
@@ -192,7 +201,7 @@ export class Game {
           challenge: r.f < -40 && sp.fighter && li.fighter && (sp.has('Hot-headed') || sp.has('Brave') || sp.has('Ambitious')) && !this.raidActive ? 1.2 : 0,
           comfort: li.mood < -15 ? 2.2 : 0,
           propose: eligible && !sp.spouse && !li.spouse && r.r >= 75 && r.f >= 45 ? 4 : 0,
-          tryBaby: sp.spouse === li && r.r > 45 && ![sp, li].some((x) => x.pregnant || x.age === 'elder') && (sp.children?.length || 0) < 4 && !this.raidActive && this.aliveCount < 110 ? 1.2 : 0,
+          tryBaby: sp.spouse === li && r.r > 45 && ![sp, li].some((x) => x.pregnant || x.age === 'elder') && (sp.children?.length || 0) < 4 && !this.raidActive && this.aliveCount < this.popCap ? 1.2 : 0,
         };
         kind = weightedPick(Object.keys(W), (k) => W[k]);
       }

@@ -384,6 +384,42 @@ The commissioner gains honour and fame. Rulers can also quietly skim the treasur
 - **Click a family member** for their menu: talk, court, try for a baby, allowance, tutor and so on. *👤 Control* switches to them; clicking their portrait (top left) also switches.
 - **Click yourself, or press ☰ Options in your panel,** for your own options: Land & Housing office, matchmaker, offices you hold, standing for headman, family rites and "I'm stuck".
 
+## Family life
+
+`src/family.js`. Spouses used to be independent atoms who shared an address and a `spouse` pointer and
+nothing else. Nothing in `Sim.think()` ever consulted `spouse`, `children`, `parents` or `home`: a
+husband was about 1.4x more likely to chat to his wife than to a stranger he liked equally, and only if
+she happened to be within 40 metres. The only thing a couple could do *as a couple* was conceive.
+
+Now a marriage has a shape:
+
+- **They share an hour.** Couples (and parents, children and siblings under one roof) seek each other
+  out and eat at the family cookpot, sit on the 평상 bench, pray side by side at the shrine, idle in the
+  pavilion, share a cup at the jumak, or walk by the water. The partner is *asked*, not commandeered —
+  if they are at work or in a fight the invitation quietly comes to nothing.
+- **Parents walk small children to the school hall** in the morning.
+- **Marriages warm and cool.** Time together warms them; neglect cools them at two points a day. Hunger,
+  exhaustion, lost honour, poverty and a hot temper build strain until the couple quarrels, and a gentle
+  spouse is the one who makes peace.
+- **A marriage left cold becomes estranged** — the wife goes back to her own people, as she might have —
+  and can still be mended later, at which point she comes home.
+- Click anyone married to see how it stands: *devoted*, *content*, *cool*, *unhappy* or *estranged*, and
+  how long since they last shared an hour.
+
+### Villagers can finally have children
+
+The three birth gates were `aliveCount < 105`, `< 110` and `< 105`, but the valley **starts at about
+128**, so every one of them was false from the first frame and no villager could ever conceive. Every
+child in the game was the player's. Worse, immigration was allowed up to 175, so newcomers pushed the
+population *further* from the birth threshold — growth was immigration-only, and immigration structurally
+suppressed births.
+
+The cap is now **derived from the houses actually standing** (`G.popCap` in `game.js`: roughly 3–6 souls
+per dwelling by tier, plus the palace, barracks, temple and bandit camp — about 176 for a 32-house
+valley), and newcomers now stop at the same ceiling births respect. Building more houses genuinely makes
+room for more families. Measured over four days: **13 children born, 6 more on the way**, against zero
+before.
+
 ## Ambition — what a villager is trying to make of their life
 
 `src/ambition.js`. Before this, every NPC ran a pure need-satisfaction loop — eat, sleep, work a shift,
