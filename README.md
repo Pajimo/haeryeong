@@ -417,6 +417,40 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## What the village knows about you
+
+`src/society.js`. Gossip already existed as a conversation kind, but it was scenery: it picked a random
+person the speaker happened to know, said a canned line, and docked the listener's opinion by four
+points. Nothing true ever travelled, and nobody's standing was the product of what they had actually
+done.
+
+**News is real now.** Notable things — a rise in fortune, a ruin, a wedding, a birth, a theft, a
+promotion, a new stall, a bought freedom, an outlawing, a killing — become items of news attached to the
+person they are about. People carry up to ten things they have heard, pass them on when they gossip, and
+think better or worse of the subject for it. When two villagers talk, one really does tell the other
+something that happened, to someone who had not heard it yet.
+
+So **reputation is emergent**: it is the average of what the valley has heard about you, and how far it
+has spread — not a number any code sets. Click anyone to see where they stand (*well spoken of* down to
+*badly spoken of*) and how many people have heard something about them.
+
+Society watches the valley each morning and notices what changed, rather than asking every other system
+to announce itself — so a villager who quietly bought a stall yesterday is being talked about today.
+
+One thing worth getting right: a constable who cuts down a bandit has done his job. Killings are only
+blackening when they are unlawful; a lawful killing of an outlaw is *creditable*. Before that
+distinction, five days of raids branded every soldier in the valley a murderer — 18 of them.
+
+**Friends** act, too. A villager will cross the valley simply to sit with a friend, and one with
+something to spare will press coins into the hand of a friend who has fallen on hard times, unasked.
+
+**Rivals** emerge from ambition. Two people chasing the same scarce prize — the headman's sash, the same
+person's hand — come to resent each other, talk each other down when they gossip, and take a rival's
+success badly. In one run, four villagers were competing for the sash at once.
+
+Cost: the simulation step went from 0.9 ms to about 2.2 ms with ambition, family and society all running,
+against roughly 5 ms of rendering — comfortable inside a 60 fps frame, and the quality governor scales
+the graphics rather than the simulation on weaker machines.
 ## Family life
 
 `src/family.js`. Spouses used to be independent atoms who shared an address and a `spouse` pointer and

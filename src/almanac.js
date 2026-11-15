@@ -82,6 +82,7 @@ export function createAlmanacSystem(G) {
         ...(G.systems.find((x) => x.id === 'royalPower')?.status?.() || []),
         ...(G.systems.find((x) => x.id === 'royalGuard')?.status?.() || []),
         ...(G.systems.find((x) => x.id === 'ambition')?.status?.() || []).map((t) => `✦ ${t}`),
+        ...(G.systems.find((x) => x.id === 'society')?.status?.() || []).map((t) => `🗣 ${t}`),
         G.director?.active ? `🔔 Happening now: <b>${G.director.active.title || G.director.active.kind}</b>.` : '',
       ].filter(Boolean);
       G.ui.modal(`<h2>Almanac · 책력</h2><p class="alm-season">${ic} ${nm} <span class="ko">${ko}</span> — day ${ds} of ${SEASON_DAYS}. Next season: ${SEASON_NAMES[next][2]} ${SEASON_NAMES[next][0]} (${FEST[next][0]} on its 3rd day).</p>

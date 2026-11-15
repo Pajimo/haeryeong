@@ -222,6 +222,10 @@ export class Game {
         break;
       }
       case 'gossip': {
+        // real news first (src/society.js): something that actually happened, passed on to someone who
+        // had not heard it yet. Falls back to the old canned line when there is nothing to tell.
+        const soc = this.systems.find((x) => x.id === 'society');
+        if (soc?.gossipTurn && soc.gossipTurn(sp, li, line, setA)) break;
         const others = [...sp.rel.keys()].map((id) => this.sims.find((s) => s.id === id)).filter((s) => s && s !== li && !s.dead);
         const o = others.length ? pick(others) : null;
         sp.say(o ? line('gossip', li.name.given, o.name.given) : line('chat'), 'talk'); setA(sp, 'talk');
