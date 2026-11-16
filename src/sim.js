@@ -287,7 +287,17 @@ export class Sim {
     a.phase = a.phase || 'move'; a.t = 0;
     this.action = a;
     if (a.obj) a.obj.users.add(this);
-    const dest = a.dest || (a.obj ? this.standOf(a.obj) : a.target ? [a.target.pos.x, a.target.pos.z] : null);
+    let dest = a.dest || (a.obj ? this.standOf(a.obj) : a.target ? [a.target.pos.x, a.target.pos.z] : null);
+    // a crowd at one object (ten banquet guests, villagers at the well) used to stack on a single point:
+    // each later arrival takes their own place in a loose ring around it
+    if (!a.dest && a.obj && !a.obj.seat && (a.obj.def.cap || 1) >= 4 && this.G.nav?.blocked) {
+      const i = a.obj.users.size - 1;
+      if (i > 0) {
+        const ang = i * 2.39996 + (a.obj.face || 0), r = 0.8 + 0.3 * Math.sqrt(i);
+        const x = dest[0] + Math.sin(ang) * r, z = dest[1] + Math.cos(ang) * r;
+        if (!this.G.nav.blocked(x, z, 0.3)) dest = [x, z];
+      }
+    }
     if (dest) this.path = planPath(this.pos.x, this.pos.z, dest[0], dest[1]);
     this.currentLabel = a.label || a.type;
   }
@@ -584,7 +594,7 @@ export class Sim {
           return;
         }
         this.char.setAnim(anim === 'farm' ? 'farm' : anim);
-        if (o.look) this.faceTowards(o.look[0], o.look[1], dt); else if (o._stand && (o._stand[0] !== o.x || o._stand[1] !== o.z) && !o.seat) this.faceTowards(o.x, o.z, dt); else if (o.seat && d.anim === 'sit') this.heading = dampAngle(this.heading, o.face + Math.PI, 6, dt); else if (o.face !== undefined) this.heading = dampAngle(this.heading, o.face, 6, dt);
+        if (o.look) this.faceTowards(o.look[0], o.look[1], dt); else if (!o.seat && Math.hypot(this.pos.x - o.x, this.pos.z - o.z) > 0.6) this.faceTowards(o.x, o.z, dt); else if (o.seat && d.anim === 'sit') this.heading = dampAngle(this.heading, o.face + Math.PI, 6, dt); else if (o.face !== undefined) this.heading = dampAngle(this.heading, o.face, 6, dt);
         for (const k in d.adv) this.needs[k] = clamp(this.needs[k] + d.adv[k] * gm, 0, 100);
         if (d.work) { this.earn(JOBS[this.job].pay * (1 + (this.rankBonus || 0) + (this.stall && o.kind === 'stallWork' ? 1 : 0)) * gm / 60); this.workedToday += gm; }
         if (o.swingTop) { const th = Math.sin(a.t * 2.2 * 60 / 60) * 0.75; const L = 4.3; this.pos.x = o.swingTop[0]; this.pos.z = o.swingTop[2] + Math.sin(th) * L; a.seatY = o.swingTop[1] - Math.cos(th) * L; this.heading = 0; }
