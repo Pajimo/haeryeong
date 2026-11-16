@@ -417,6 +417,47 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## The agricultural year
+
+`src/harvest.js`. The valley talked about harvests and never had one. "The rice ripens and the harvest
+begins" was a line of seasonal flavour text; the price of rice wandered at random by up to 30% a day
+with no reference to anything that had happened; and whether the summer was a drought or a monsoon made
+no difference to a single villager's life. There was no granary, no store of food, and no such thing as
+a bad year.
+
+Now the valley farms:
+
+- **Rain through spring and summer decides the crop.** Rice wants about a third of the growing season in
+  rain. A dry summer cracks the paddies; an endless monsoon lays the rice flat in the water.
+- **The farmers and the land worked decide how much there is** — heads and parcels both count.
+- **The harvest fills a granary** on the first day of autumn, and the village eats through it for the
+  rest of the year.
+- **The price of rice follows the store**, not a random walk. A full granary makes rice cheap; an empty
+  one triples it.
+- **A bad year bites.** Once the store falls under half what the year needs, hunger falls hardest on
+  those who cannot buy their way out of it, patience with whoever rules runs out, and the headman starts
+  losing the honour he was elected on.
+- **And someone may open their stores.** The headman, the king, or simply a rich villager with a
+  conscience buys rice for the village — which becomes news, and is remembered. You can do it yourself
+  from your own menu when the valley is hungry.
+
+> 🌾 Year 1: a fair harvest. The weather held. 236 sacks are in the granary — 193% of what the valley
+> needs to see the year out.
+> 🍚 Yi Ji-dong opened his stores and bought 40 sacks for the village. There was a queue at the gate
+> before dawn.
+
+### The bug underneath it: there were never four seasons
+
+Building this turned up something much larger. **`env.season` was never defined.** The almanac, the
+director's festivals, the soundscape, life events, hunting and my own harvest all read it, and all of
+them saw `undefined`. Most had `|| 'autumn'` as a fallback, so for the whole life of the project the
+valley has had four seasons on screen and exactly **one in its logic**: Chuseok at every festival
+whatever the month, autumn birdsong falling on snow, autumn life-events in spring. And `hunting.js` has
+a winter branch guarded by `if (env.season !== 'winter') return;` — which could never once run.
+
+`Seasons.current` returns an object (`{ key, en, ko, icon }`) while every consumer compares against the
+string key, so `env.season` now exposes `G.seasons.current.key`. Eight files started working correctly
+on one line.
 ## What a life leaves behind
 
 `src/inheritance.js`. Death used to destroy property. When a villager died the only thing that happened

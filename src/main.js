@@ -72,6 +72,7 @@ import { createFamilySystem } from './family.js';
 import { createSocietySystem } from './society.js';
 import { createHousesSystem } from './houses.js';
 import { createInheritanceSystem } from './inheritance.js';
+import { createHarvestSystem } from './harvest.js';
 import { createPerf } from './perf.js';
 
 const params = new URLSearchParams(location.search);
@@ -218,6 +219,15 @@ async function boot() {
   G.seed = seed; G.quality = quality; G.water = water; G.perf = perf;
   const seasonParam = { spring: 0, summer: 1, autumn: 2, winter: 3 }[params.get('season') || 'autumn'];
   G.seasons = new Seasons(G, loadData?.env?.seasonOffset ?? seasonParam ?? 2);
+  // `env.season` is read by the almanac, the director's festivals, the soundscape, life events, hunting
+  // and the harvest — but the Environment never defined it, so every one of them saw `undefined` and
+  // fell back to 'autumn'. The valley has had four seasons on screen and exactly one in its logic:
+  // Chuseok every festival, autumn birdsong in the snow, and hunting.js's winter branch (`if
+  // (env.season !== 'winter') return;`) that could never once run. The season lives on the Seasons
+  // controller, so point env at it.
+  // Seasons.current is an object ({ key, en, ko, icon }); every consumer compares against the string
+  // key ('spring', 'summer', ...), so expose that.
+  Object.defineProperty(env, 'season', { get: () => G.seasons.current?.key, configurable: true });
   if (loadData?.env?.snow) G.seasons.snow = loadData.env.snow;
   if (G.seasons.index() === 3 && !loadData) { G.seasons.snow = 0.6; env.setWeather('snow'); }
   const ai = new AIBrain();
@@ -227,7 +237,7 @@ async function boot() {
   G.factions = new Factions(G);
   G.economy = new Economy(G);
   G.animals = new Animals(G);
-  for (const make of [createAspirationsSystem, createAlbumSystem, createMissionsSystem, createWarSystem, createLifeEventsSystem, createPastimesSystem, createStandoffSystem, createMemoriesSystem, createSoundscapeSystem, createFuneralsSystem, createAlmanacSystem, createRivalsSystem, createArcherySystem, createArcheryContestSystem, createHuntingSystem, createDynastySystem, createExpeditionsSystem, createMinigamesSystem, createUnderworldSystem, createPoliticsSystem, createSagasSystem, createYutSystem, createWrestleSystem, createForgeSystem, createHorseCourseSystem, createRoyalWorksSystem, createRoyalPowerSystem, createRoyalGuardSystem, createCourtLifeSystem, createVillageDecorSystem, createServantsSystem, createPilgrimageSystem, createAuthoritySystem, createOfficialsSystem, createFortuneSystem, createKinSystem, createHousingSystem, createRidingSystem, createMigrationSystem, createAmbitionSystem, createFamilySystem, createSocietySystem, createHousesSystem, createInheritanceSystem, createTutorialSystem]) { try { G.registerSystem(make(G)); } catch (e) { console.error('system init failed', e); } }
+  for (const make of [createAspirationsSystem, createAlbumSystem, createMissionsSystem, createWarSystem, createLifeEventsSystem, createPastimesSystem, createStandoffSystem, createMemoriesSystem, createSoundscapeSystem, createFuneralsSystem, createAlmanacSystem, createRivalsSystem, createArcherySystem, createArcheryContestSystem, createHuntingSystem, createDynastySystem, createExpeditionsSystem, createMinigamesSystem, createUnderworldSystem, createPoliticsSystem, createSagasSystem, createYutSystem, createWrestleSystem, createForgeSystem, createHorseCourseSystem, createRoyalWorksSystem, createRoyalPowerSystem, createRoyalGuardSystem, createCourtLifeSystem, createVillageDecorSystem, createServantsSystem, createPilgrimageSystem, createAuthoritySystem, createOfficialsSystem, createFortuneSystem, createKinSystem, createHousingSystem, createRidingSystem, createMigrationSystem, createAmbitionSystem, createFamilySystem, createSocietySystem, createHousesSystem, createInheritanceSystem, createHarvestSystem, createTutorialSystem]) { try { G.registerSystem(make(G)); } catch (e) { console.error('system init failed', e); } }
   if (!loadData) G.populate(); else G.restore(loadData);
   G.animals.populate(loadData?.animals);
   G.economy.initHouses();
