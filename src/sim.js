@@ -259,13 +259,35 @@ export class Sim {
   endAction() { this.cancelAction(); }
   setHidden(h) { this.hidden = h; this.char.root.visible = !h; }
   push(action, front = false) { if (front) this.queue.unshift(action); else this.queue.push(action); }
+  // Where a person stands to use an object. Many objects sit inside the collision of the thing they
+  // belong to — the tavern counter, the market stalls, a well, a palace cookpot — and walking to their
+  // exact point stopped people a few metres short for hours: the tavern, the main place to buy a meal,
+  // was unreachable. Use the object's own point when it is walkable, else the nearest walkable spot.
+  standOf(o) {
+    const nav = this.G.nav;
+    if (!nav?.blocked) return [o.x, o.z];
+    if (o._stand && !nav.blocked(o._stand[0], o._stand[1], 0.3)) return o._stand;
+    if (!nav.blocked(o.x, o.z, 0.3)) return (o._stand = [o.x, o.z]);
+    // open ground, not a sliver between two walls that nothing can path into
+    const open = (x, z) => { let n = 0; for (let k = 0; k < 8; k++) { const q = k * Math.PI / 4; if (!nav.blocked(x + Math.sin(q) * 0.9, z + Math.cos(q) * 0.9, 0.25)) n++; } return n >= 5; };
+    let best = null;
+    for (let r = 0.5; r <= 7.01 && !best; r += 0.5) {
+      for (let i = 0; i < 16; i++) {
+        // try the object's front first, then sweep round
+        const ang = (o.face || 0) + (i % 2 ? 1 : -1) * Math.ceil(i / 2) * (Math.PI / 8);
+        const x = o.x + Math.sin(ang) * r, z = o.z + Math.cos(ang) * r;
+        if (!nav.blocked(x, z, 0.3) && open(x, z)) { best = [x, z]; break; }
+      }
+    }
+    return (o._stand = best || [o.x, o.z]);
+  }
   startAction(a) {
     this.cancelAction();
     if (!this.mount && this.horse && !this.horse.dead && !this.horse.rider && !this.controlled && a.type !== 'fight') { const dest = a.dest || (a.obj ? [a.obj.x, a.obj.z] : null); if (dest && !a.toHorse && Math.hypot(dest[0] - this.pos.x, dest[1] - this.pos.z) > 55 && this.horse.pos.distanceTo(this.pos) < 35) { if (this.horse.pos.distanceTo(this.pos) < 3) this.G.animals.mount(this, this.horse); else { const h = this.horse; return this.startAction({ type: 'goto', dest: [h.pos.x, h.pos.z], toHorse: true, label: 'Fetching the horse', then: (s) => { if (!s.mount && h.pos.distanceTo(s.pos) < 4) s.G.animals.mount(s, h); s.startAction(a); } }); } } }
     a.phase = a.phase || 'move'; a.t = 0;
     this.action = a;
     if (a.obj) a.obj.users.add(this);
-    const dest = a.dest || (a.obj ? [a.obj.x, a.obj.z] : a.target ? [a.target.pos.x, a.target.pos.z] : null);
+    const dest = a.dest || (a.obj ? this.standOf(a.obj) : a.target ? [a.target.pos.x, a.target.pos.z] : null);
     if (dest) this.path = planPath(this.pos.x, this.pos.z, dest[0], dest[1]);
     this.currentLabel = a.label || a.type;
   }
@@ -511,7 +533,7 @@ export class Sim {
       if (a.phase === 'move') {
         // An unreachable seat (inside a wall, across water) used to be walked at forever — guests spent
         // nine hours at the banquet door, starving. Give up once an hour passes without getting closer.
-        const dd = Math.hypot(this.pos.x - o.x, this.pos.z - o.z);
+        const sp = this.standOf(o), dd = Math.hypot(this.pos.x - sp[0], this.pos.z - sp[1]);
         if (a._best == null || dd < a._best - 1.5) { a._best = dd; a._bestT = a.t; }
         else if (a.t - a._bestT > 60 && !a.forced) { if (this.char.propName === 'lantern') this.char.setProp(null); return this.endAction(); }
         const run = a.run || a.work && this.late;
@@ -550,7 +572,7 @@ export class Sim {
           return;
         }
         this.char.setAnim(anim === 'farm' ? 'farm' : anim);
-        if (o.look) this.faceTowards(o.look[0], o.look[1], dt); else if (o.seat && d.anim === 'sit') this.heading = dampAngle(this.heading, o.face + Math.PI, 6, dt); else if (o.face !== undefined) this.heading = dampAngle(this.heading, o.face, 6, dt);
+        if (o.look) this.faceTowards(o.look[0], o.look[1], dt); else if (o._stand && (o._stand[0] !== o.x || o._stand[1] !== o.z) && !o.seat) this.faceTowards(o.x, o.z, dt); else if (o.seat && d.anim === 'sit') this.heading = dampAngle(this.heading, o.face + Math.PI, 6, dt); else if (o.face !== undefined) this.heading = dampAngle(this.heading, o.face, 6, dt);
         for (const k in d.adv) this.needs[k] = clamp(this.needs[k] + d.adv[k] * gm, 0, 100);
         if (d.work) { this.earn(JOBS[this.job].pay * (1 + (this.rankBonus || 0) + (this.stall && o.kind === 'stallWork' ? 1 : 0)) * gm / 60); this.workedToday += gm; }
         if (o.swingTop) { const th = Math.sin(a.t * 2.2 * 60 / 60) * 0.75; const L = 4.3; this.pos.x = o.swingTop[0]; this.pos.z = o.swingTop[2] + Math.sin(th) * L; a.seatY = o.swingTop[1] - Math.cos(th) * L; this.heading = 0; }
