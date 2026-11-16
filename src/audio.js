@@ -141,6 +141,24 @@ export class Audio {
   }
   drum() { if (!this.ctx) return; for (let i = 0; i < 6; i++) this.drumHit(i % 3 === 2 ? 'ta' : 'kung', 0.6, i * 0.18); }
   alarm() { if (!this.ctx) return; for (let i = 0; i < 10; i++) this.drumHit('kung', 0.7, i * 0.28); this.combatT = 8; }
+  // A Korean bronze bell (범종): one deep strike that hums for ten seconds, with the slow beating
+  // (맥놀이) these bells are famous for — each partial is a pair of slightly detuned tones.
+  bell(vol = 0.35, when = 0) {
+    if (!this.ctx) return; const ctx = this.ctx, t = ctx.currentTime + when;
+    const out = ctx.createGain(); out.gain.value = Math.min(1, Math.max(0, +vol || 0)); out.connect(this.sfxBus);
+    for (const [f, a, d] of [[64, 1, 11], [128.6, 0.45, 8], [171, 0.35, 6], [236, 0.22, 4.5], [342, 0.12, 3], [517, 0.06, 1.8]]) {
+      for (const det of [0, 0.55 + f * 0.002]) {
+        const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = f + det;
+        const g = ctx.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(a * 0.5, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+        o.connect(g); g.connect(out); o.start(t); o.stop(t + d + 0.1);
+      }
+    }
+    // the wooden striker's thud
+    const n = ctx.createBufferSource(); n.buffer = this.white || (this.white = this.whiteBuffer(1));
+    const nf = ctx.createBiquadFilter(); nf.type = 'lowpass'; nf.frequency.value = 400; const ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.4, t); ng.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+    n.connect(nf); nf.connect(ng); ng.connect(out); n.start(t); n.stop(t + 0.2);
+  }
   festival(on) { this.festivalOn = on; }
   ui() { if (!this.ctx) return; this.pluck(880, 0.08); }
 }

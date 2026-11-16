@@ -208,6 +208,7 @@ body.warrior #chronicle { opacity: 0.75; }
 #t-continue { display: block; margin: 12px auto 0; font-size: 15px; padding: 8px 26px; background: rgba(0,0,0,0.5); color: var(--gold-2); border: 1px solid var(--gold); border-radius: 3px; }
 .t-opts { display: flex; gap: 16px; justify-content: center; margin-top: 16px; font-size: 13px; color: var(--gold-2); }
 .t-opts select, .t-opts input { background: rgba(0, 0, 0, 0.5); color: var(--hanji); border: 1px solid rgba(201, 164, 92, 0.5); padding: 3px 6px; width: 90px; font-family: inherit; }
+.t-opts select { width: auto; min-width: 90px; }   /* '🍁 Autumn' was clipped to 'Autumı' */
 .t-help { max-width: 460px; margin: 18px auto 0; font-size: 13.5px; line-height: 1.5; opacity: 0.85; }
 
 /* life / path tabs */
