@@ -605,3 +605,14 @@ body.standoff #dock { opacity: 0; pointer-events: none; }
 /* ambition progress in the villager panel */
 .ambbar { height: 5px; background: rgba(0,0,0,.18); border-radius: 3px; margin: 4px 0 2px; overflow: hidden; }
 .ambbar i { display: block; height: 100%; background: linear-gradient(90deg,#b8863b,#e0b45e); }
+
+/* Narrow windows (split screen, small laptops): the mission tracker sat on the household portraits and
+   the clock, the camera pad on the minimap, and the chronicle on the camera pad. */
+@media (max-width: 900px) {
+  #mission-hud { top: 228px; min-width: 0; width: min(380px, calc(100vw - 28px)); }
+  #tutorial { top: 306px !important; }
+  #chronicle { top: 306px !important; max-height: max(120px, calc(100vh - 306px - 340px)) !important; }
+  #campad { bottom: 228px; }
+  #toast { top: 232px; width: min(520px, calc(100vw - 28px)); }
+  #tutorial { max-height: max(90px, calc(100vh - 306px - 352px)); overflow-y: auto; }
+}

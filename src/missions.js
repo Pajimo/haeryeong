@@ -300,6 +300,11 @@ export function createMissionsSystem(G) {
     abandon() { if (this.active) this.finish(false, 'You abandoned the mission.'); },
 
     titleCard(top, title, sub, body = '', good) {
+      // never paint a title card across an open dialog (the welcome letter, a court session…): wait
+      if (document.querySelector('#modal:not(.hidden)') && (this._cardWait = (this._cardWait || 0) + 1) < 40) {
+        clearTimeout(this._cw); this._cw = setTimeout(() => this.titleCard(top, title, sub, body, good), 500); return;
+      }
+      this._cardWait = 0;
       const c = this.card; c.className = good === true ? 'pass' : good === false ? 'fail' : '';
       c.innerHTML = `<div class="mc-top">${top}</div><div class="mc-title">${esc(title)}</div><div class="mc-sub">${esc(sub)}</div>${body ? `<div class="mc-body">${esc(body)}</div>` : ''}`;
       c.classList.remove('hidden'); clearTimeout(this._ct); this._ct = setTimeout(() => c.classList.add('hidden'), body ? 7000 : 4200);
