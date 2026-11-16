@@ -223,7 +223,7 @@ export function createHousesSystem(G) {
         top ? `The ${top.name} house stands highest.` : ''].filter(Boolean);
     },
 
-    serialize() { return { houses: st.houses, feuds: st.feuds, seq: st.seq, brawls: st.brawls, settled: st.settled }; },
+    serialize() { return { houses: st.houses, feuds: st.feuds, seq: st.seq, brawls: st.brawls, settled: st.settled, weddings: st.weddings }; },
     restore(d) { if (d) Object.assign(st, d); },
   };
   return S;

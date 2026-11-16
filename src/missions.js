@@ -267,7 +267,9 @@ export function createMissionsSystem(G) {
     finish(ok, reason) {
       const M = this.active; if (!M) return;
       this.active = null; if (M.actor) M.actor.missionHero = false; this.beacon.visible = false; this.hud.classList.add('hidden'); G.env.spiritWindTarget = null;
-      try { M.stage?.end?.(M); } catch (e) { /* ignore */ }
+      // Swallowing this silently is dangerous: stage end handlers are what clear missionLock on
+      // escorted villagers, so a throw here froze someone out of all AI permanently.
+      try { M.stage?.end?.(M); } catch (e) { console.error('[missions] stage end', e); }
       const exit = places(G).south;
       for (const k in M.v) { const v = M.v[k]; const list = Array.isArray(v) ? v : [v]; for (const x of list) {
         if (!x || x.dead || x.missionSpawn === undefined || x.removed) continue;

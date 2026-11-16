@@ -478,7 +478,7 @@ export class Sim {
         const rel = Math.atan2(dx, dz) - this.heading; const fa = Math.abs(Math.atan2(Math.sin(rel), Math.cos(rel))); if (fa > 1.9) continue;
         let sc = 1 / (1 + d2 * 0.08);
         if (o.controlled || o === this.G.selected) sc *= 3.5;
-        if (this.G.bubbles?.has?.(o) || o._sayT > 0) sc *= 2;
+        if (this.G.ui?.bubbles?.has?.(o) || o._sayT > 0) sc *= 2;  // the bubble map is on the UI
         if (this.getRel(o).r > 30) sc *= 2.5;
         sc *= 0.5 + Math.random();
         if (sc > bs) { bs = sc; best = o; }

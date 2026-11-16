@@ -555,7 +555,9 @@ export class Animals {
     G.audio?.hit(t.pos, a.type === 'tiger');
     if (t.say && chance(0.4)) t.say(a.type === 'tiger' ? 'AAAH! A TIGER!' : 'Get away!', 'shout', 1.5);
     if (t.controlled) G.hitStop?.(0.04, 0.12);
-    if (t.hp <= 0) { if (t.die) { t.die(null); G.log(`${t.name.full} was killed by a ${a.def.name.toLowerCase()}.`, 'death', t.pos); } else t.dieAnimal?.(a); a.state = 'idle'; return; }
+    // dieAnimal() was never defined anywhere, so an animal killed by another animal was simply left
+    // alive at hp <= 0 while its attacker went idle. Use the real kill path.
+    if (t.hp <= 0) { if (t.die) { t.die(null); G.log(`${t.name.full} was killed by a ${a.def.name.toLowerCase()}.`, 'death', t.pos); } else this.kill(t, null); a.state = 'idle'; return; }
     // villagers respond
     if (t.startFight && !t.controlled && t.action?.type !== 'fight') {
       if (t.fighter) t.startFight(a); else { t.cancelAction(); t.startAction({ type: 'flee', dest: t.home?.door || [0, 0], label: 'Fleeing!' }); }

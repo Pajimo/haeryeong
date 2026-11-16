@@ -184,9 +184,11 @@ export function createRoyalGuardSystem(G) {
     panelHtml(s) { return s.household && s.job === 'king' ? `<div class="facts">🛡 Royal guard: ${guards().length} sworn swords · loyalty ${Math.round(avgLoyalty())}</div>` : ''; },
     status() { const g = guards(); const T = threat(); return [g.length ? `🛡 The royal guard: ${g.filter((x) => x.royalGuard.charge == null).length} swords on the King, ${g.filter((x) => x.royalGuard.charge != null).length} on the royal family, loyalty ${avgLoyalty() > 65 ? 'iron' : avgLoyalty() > 40 ? 'steady' : 'wavering'}.` : '🛡 The King rides without a royal guard.', `🗡 Danger to the throne: <b>${T.score > 60 ? 'grave' : T.score > 30 ? 'real' : 'low'}</b>${T.reasons.length ? ' — ' + T.reasons.slice(0, 3).join('; ') : ''}.`]; },
     serialize() { return { st, guards: guards().map((g) => ({ id: g.id, ...g.royalGuard })) }; },
+    // charge/official must be restored too: without them officials.staffRetinues counts zero existing
+    // guards for every officer and recruits a whole fresh retinue on top, growing the guard each load.
     restore(d, get) {
       if (!d) return; Object.assign(st, d.st || {}); st.ids = [];
-      for (const r of d.guards || []) { const g = get(r.id); if (!g) continue; g.royalGuard = { loyalty: r.loyalty, bribedBy: r.bribedBy }; g.missionLock = true; g.maxHp = Math.max(g.maxHp, 280); dress(g, g.id === st.captain); st.ids.push(g.id); }
+      for (const r of d.guards || []) { const g = get(r.id); if (!g) continue; g.royalGuard = { loyalty: r.loyalty, bribedBy: r.bribedBy, charge: r.charge ?? null, official: !!r.official }; g.missionLock = true; g.maxHp = Math.max(g.maxHp, 280); dress(g, g.id === st.captain); st.ids.push(g.id); }
     },
   };
   function onNewKing(k, how) {

@@ -81,7 +81,7 @@ export function createInheritanceSystem(G) {
     const takers = [...sons, ...daughters, ...kin];
     if (!takers.length && !widow) {
       // nobody is left: the house dies out
-      for (const h of housesOwned(dead)) { h.owner = null; if (H?.st?.forSale) H.st.forSale[h.id] = { price: Math.round((G.economy?.houseValue?.(h) || 100) * 0.8) }; }
+      for (const h of housesOwned(dead)) { h.owner = null; if (H?.st?.forSale) H.st.forSale[h.id] = true; }  // housing stores a boolean here
       if (H?.st?.land) delete H.st.land[dead.id];
       st.escheated++;
       if (estate > 150) log(`${dead.name.full} died with no one to inherit. The ${dead.name.surname} name ends, and the crown will sell what is left.`, 'story', dead.pos);
@@ -105,7 +105,15 @@ export function createInheritanceSystem(G) {
     // 3. the roof and the land follow the principal heir
     const principal = eldest || takers[0] || widow;
     if (principal) {
-      for (const h of housesOwned(dead)) h.owner = principal.id;
+      for (const h of housesOwned(dead)) {
+        h.owner = principal.id;
+        // housing.js keeps a parallel rent record keyed by house id. Left pointing at a dead owner it
+        // resolves to null, so every day's rent on an inherited let house was quietly paid to the royal
+        // treasury instead of the heir — and if the heir moved in, they were charged rent on their own
+        // house, because the "you don't pay rent to yourself" guard compares against r.owner.
+        const r = H?.st?.rent?.[h.id];
+        if (r) { if (r.owner === dead.id) r.owner = principal.id; if (r.tenant === principal.id) { r.tenant = null; } }
+      }
       const parcels = landOf(dead);
       if (parcels && H?.st?.land) { H.st.land[principal.id] = (H.st.land[principal.id] || 0) + parcels; delete H.st.land[dead.id]; }
       if (dead.stall && !principal.stall) principal.stall = true;

@@ -310,10 +310,10 @@ export function createSocietySystem(G) {
         st.helped ? `${st.helped} times a friend has been helped out of their own pocket.` : ''].filter(Boolean);
     },
 
-    serialize() { return { news: st.news, seq: st.seq, told: st.told, helped: st.helped, heard: G.sims.filter((s) => s.heard?.length).map((s) => [s.id, s.heard]), rivals: G.sims.filter((s) => s.rivals?.length).map((s) => [s.id, s.rivals]) }; },
+    serialize() { return { news: st.news, seq: st.seq, told: st.told, helped: st.helped, rivalries: st.rivalries, snap: st.snap, heard: G.sims.filter((s) => s.heard?.length).map((s) => [s.id, s.heard]), rivals: G.sims.filter((s) => s.rivals?.length).map((s) => [s.id, s.rivals]) }; },
     restore(d, get) {
       if (!d) return;
-      st.news = d.news || []; st.seq = d.seq || 1; st.told = d.told || 0; st.helped = d.helped || 0;
+      st.news = d.news || []; st.seq = d.seq || 1; st.told = d.told || 0; st.helped = d.helped || 0; st.rivalries = d.rivalries || 0; st.snap = d.snap || {};
       for (const [id, h] of d.heard || []) { const s = get?.(+id) || G.sims.find((x) => x.id === +id); if (s) s.heard = h; }
       for (const [id, r] of d.rivals || []) { const s = get?.(+id) || G.sims.find((x) => x.id === +id); if (s) s.rivals = r; }
     },

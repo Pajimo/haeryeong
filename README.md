@@ -417,6 +417,43 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## Bug hunt
+
+A systematic sweep for silently-broken code — conditions that can never be true, properties read but
+never written, and cross-file contracts that JavaScript swallows. Confirmed and fixed:
+
+**Save corruption.** Upgrading a house that the game itself built (a young couple's hut, anything built
+on a plot) deleted the house's *creation* record and replaced it with an "upgrade" record. On reload
+there was nothing to recreate it, so the building silently vanished and its residents came back with no
+home at all. The creation record is now kept and its tier bumped.
+
+**Inherited rent went to the crown.** My own inheritance system transferred `house.owner` but not
+`housing.st.rent[id].owner`, which still named the dead man. That resolves to nobody, so every day's rent
+on an inherited let house was quietly paid into the royal treasury — and if the heir moved in, they were
+charged rent on their own house.
+
+**The royal guard grew on every load.** `serialize()` saved each guard's `charge` and `official` fields;
+`restore()` dropped them. Officials then counted zero existing retinue guards and recruited a whole fresh
+retinue on top of the restored one, every single load.
+
+**Corpses never cleaned up.** `funerals.js` skipped assassins and mission NPCs via `d.assassin`,
+`d.missionTemp` and `d.isAnimal` — none of which are ever written anywhere. The real flags are
+`isAssassin` and `missionSpawn`. Those bodies were given state funerals and exempted from cleanup forever.
+
+**Animals killed by animals stayed alive.** `t.dieAnimal?.()` — a function that does not exist — left the
+victim at zero health while its attacker wandered off.
+
+**Bought votes were refunded by the autosave.** `officials.st.bribes` was spent on but never serialized.
+
+**Smaller:** `G.bubbles` should have been `G.ui.bubbles`; society's "what changed yesterday" baseline and
+rivalry count were not saved, so nothing that happened across a save was ever reported; the houses'
+wedding counter reset each load; a swallowed error in a mission stage's end handler could leave an
+escorted villager frozen out of all AI permanently; and three systems wrote a `status()` line the almanac
+never asked for.
+
+**Your own house now carries a marker whatever the deed says.** The seal only marked houses you *own*;
+a household that starts as tenants had no marker over the one door they most need to find. The roof you
+live under now gets a quieter seal (居) when it is not yours.
 ## The agricultural year
 
 `src/harvest.js`. The valley talked about harvests and never had one. "The rice ripens and the harvest

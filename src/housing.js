@@ -119,7 +119,18 @@ export function createHousingSystem(G) {
     st.projects = st.projects.filter((p) => p !== pr); clearScaffold(pr);
     const owner = byId(pr.owner);
     let h;
-    if (pr.houseId != null) { const rec = { id: pr.houseId, place: pr.place, tier: pr.tier, upgrade: true }; h = raise(rec); st.built = st.built.filter((b) => b.id !== pr.houseId); st.built.push(rec); }
+    if (pr.houseId != null) {
+      // Upgrading used to DELETE the house's creation record and replace it with an `upgrade` record.
+      // For a world-generated house that is fine (preRestore's raise() finds the terrain-built house).
+      // For a house housing itself built — the hut a young couple put up, anything built on a plot —
+      // the creation record was the only thing that would ever recreate it, so after a save/load the
+      // building silently vanished and its residents came back with no home at all. Keep the creation
+      // record and just bump its tier, so a replay rebuilds it already upgraded.
+      h = raise({ id: pr.houseId, place: pr.place, tier: pr.tier, upgrade: true });
+      const prev = st.built.find((b) => b.id === pr.houseId && !b.upgrade);
+      if (prev) { prev.tier = pr.tier; prev.place = pr.place; prev.dims = h?.dims; }
+      else { st.built = st.built.filter((b) => b.id !== pr.houseId); st.built.push({ id: pr.houseId, place: pr.place, tier: pr.tier, upgrade: true, dims: h?.dims }); }
+    }
     else { const rec = { id: st.seq++, place: pr.place, tier: pr.tier, owner: pr.owner, plot: pr.plot }; h = raise(rec); st.built.push(rec); if (st.plots[pr.plot]) st.plots[pr.plot].houseId = rec.id; }
     if (!h) return;
     for (const m of alive(h)) m.addMoodlet('newhome', 'A fine new home', 15, 4320);
@@ -327,17 +338,24 @@ export function createHousingSystem(G) {
   function sealTexture(kind) {
     if (sealTex[kind]) return sealTex[kind];
     const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d');
-    const col = kind === 'home' ? '#d9b44a' : kind === 'let' ? '#6ac0a0' : '#e08a3a';
+    const col = kind === 'home' ? '#d9b44a' : kind === 'let' ? '#6ac0a0' : kind === 'live' ? '#c9d2dc' : '#e08a3a';
     g.fillStyle = 'rgba(20,14,10,0.78)'; g.beginPath(); g.arc(64, 58, 46, 0, 7); g.fill();
     g.lineWidth = 7; g.strokeStyle = col; g.beginPath(); g.arc(64, 58, 44, 0, 7); g.stroke();
     g.fillStyle = col; g.beginPath(); g.moveTo(52, 100); g.lineTo(76, 100); g.lineTo(64, 124); g.fill();
-    g.font = 'bold 52px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kind === 'home' ? '家' : kind === 'let' ? '貰' : '工', 64, 60);
+    g.font = 'bold 52px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(kind === 'home' ? '家' : kind === 'let' ? '貰' : kind === 'live' ? '居' : '工', 64, 60);
     const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return (sealTex[kind] = t);
   }
   const mine = () => new Set(G.household.filter((s) => !s.dead).map((s) => s.id));
   function myProperty() {
     const ids = mine(); const out = [];
     for (const h of G.world.houses) if (!h.virtual && ids.has(h.owner)) out.push({ key: 'h' + h.id, x: h.x, z: h.z, y: (h.y0 ?? groundAt(h.x, h.z)) + (h.tier === 'mansion' ? 11 : h.tier === 'house' ? 9.5 : 7.5), kind: h === G.homeHouse ? 'home' : 'let', h });
+    // The household starts as tenants: nobody sets an owner on the house they are given, so for the
+    // whole game there was no marker over the player's own door — the one house they most need to find.
+    // Mark the roof they live under too, with a quieter seal (居) when the deed is not theirs.
+    const myHome = G.household.find((s) => !s.dead)?.home || G.homeHouse;
+    if (myHome && !myHome.virtual && !ids.has(myHome.owner)) {
+      out.push({ key: 'h' + myHome.id, x: myHome.x, z: myHome.z, y: (myHome.y0 ?? groundAt(myHome.x, myHome.z)) + (myHome.tier === 'mansion' ? 8.5 : 6.2), kind: 'live' });
+    }
     for (const pr of st.projects) if (ids.has(pr.owner)) out.push({ key: 'p' + pr.pid, x: pr.place.x, z: pr.place.z, y: groundAt(pr.place.x, pr.place.z) + 7, kind: 'build' });
     return out;
   }
@@ -360,7 +378,7 @@ export function createHousingSystem(G) {
     ui.drawMinimap = () => {
       orig(); const g = ui.mm?.getContext('2d'); if (!g) return;
       for (const p of myProperty()) {
-        const x = 100 + p.x / 5, y = 100 + p.z / 5; const col = p.kind === 'home' ? '#ffd76a' : p.kind === 'let' ? '#7fe0b8' : '#ff9a4a';
+        const x = 100 + p.x / 5, y = 100 + p.z / 5; const col = p.kind === 'home' ? '#ffd76a' : p.kind === 'let' ? '#7fe0b8' : p.kind === 'live' ? '#dfe6ee' : '#ff9a4a';
         g.fillStyle = 'rgba(20,14,10,0.85)'; g.fillRect(x - 4.5, y - 4.5, 9, 9); g.strokeStyle = col; g.lineWidth = 1.5; g.strokeRect(x - 4.5, y - 4.5, 9, 9);
         g.fillStyle = col; g.beginPath(); g.moveTo(x - 3, y); g.lineTo(x, y - 3); g.lineTo(x + 3, y); g.closePath(); g.fill(); g.fillRect(x - 2, y, 4, 2.5);
       }

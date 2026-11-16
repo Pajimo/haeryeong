@@ -226,7 +226,7 @@ export function createOfficialsSystem(G) {
       return bits.length ? `<div class="facts">${bits.join(' · ')}</div>` : '';
     },
     status() { const p = pm(), h = headman(), c = chief(); return [`🏛 Chief State Councillor: <b>${p ? esc(p.name.full) : 'vacant'}</b>${p ? ` (${p.has?.('Greedy') ? 'greedy' : p.has?.('Gentle') ? 'merciful' : p.has?.('Ambitious') ? 'ambitious' : 'cautious'})` : ''} · Police Chief: ${c ? esc(c.name.full) : '—'} · Village Headman: ${h ? esc(h.name.full) : 'none yet'} (next assembly on day 1 of the season).`]; },
-    serialize() { return { headman: st.headman, lastElection: st.lastElection, candidates: st.candidates }; },
+    serialize() { return { headman: st.headman, lastElection: st.lastElection, bribes: st.bribes, candidates: st.candidates }; },
     restore(d) { if (d) Object.assign(st, d); },
   };
   return S;

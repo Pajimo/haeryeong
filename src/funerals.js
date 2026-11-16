@@ -245,7 +245,7 @@ export function createFuneralsSystem(G) {
     onEvent(name, p) {
       if (name !== 'death') return;
       const d = p.sim;
-      if (!d || d.faction === 'bandit' || d.faction?.startsWith?.('enemy') || d.assassin || d.missionTemp || d.isAnimal) return;
+      if (!d || d.faction === 'bandit' || d.faction?.startsWith?.('enemy') || d.isAssassin || d.missionSpawn) return;
       if (pending.includes(d) || pending.length > 6) return;
       d.deadT = -99999; // keep the body until the funeral
       pending.push(d);
