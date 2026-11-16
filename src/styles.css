@@ -615,4 +615,17 @@ body.standoff #dock { opacity: 0; pointer-events: none; }
   #campad { bottom: 228px; }
   #toast { top: 232px; width: min(520px, calc(100vw - 28px)); }
   #tutorial { max-height: max(90px, calc(100vh - 306px - 352px)); overflow-y: auto; }
+  #event { top: 62px; } #event .ev-ko { font-size: 30px; } #event .ev-en { font-size: 11px; letter-spacing: .3em; } #event .ev-hint { display: none; }
 }
+
+/* Previously in Haeryeong */
+#modal.recap { max-width: 640px; }
+#modal.recap .rc-when { opacity: .85; margin-top: -4px; }
+#modal.recap h3 { margin: 12px 0 6px; font-size: 14px; letter-spacing: .06em; color: var(--gold, #c9a45c); }
+#modal.recap .rc-fam { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+#modal.recap .rc-p { padding: 7px 9px; border: 1px solid rgba(201,164,92,.35); border-radius: 4px; font-size: 12.5px; line-height: 1.45; }
+#modal.recap .rc-p small { opacity: .7; }
+#modal.recap .rc-g { opacity: .8; font-size: 11.5px; margin-top: 2px; }
+#modal.recap .rc-n { list-style: none; padding: 0; margin: 0; font-size: 13px; }
+#modal.recap .rc-n li { padding: 4px 0; border-bottom: 1px solid rgba(201,164,92,.15); line-height: 1.4; }
+#modal.recap .rc-n small { opacity: .6; margin-right: 4px; }

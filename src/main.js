@@ -1,3 +1,4 @@
+import { showRecap } from './recap.js';
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
@@ -296,6 +297,7 @@ function begin() {
   ui.setMode('overseer'); ui.refreshHousehold();
   ui.toast(`You lead the ${hero.name.surname} household. Press H for help.`);
   if (!loadData) G.log(`${G.household.map((s) => s.name.full).join(', ')} — the ${hero.name.surname} household — begin a new chapter in Haeryeong.`, 'story', hero.pos);
+  if (loadData) setTimeout(() => { try { showRecap(G, loadData.savedAt); } catch (e) { console.error('[recap]', e); } }, 700);
 }
 
 let last = performance.now(), time = 0, frameN = 0;

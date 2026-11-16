@@ -277,8 +277,12 @@ export class Sim {
     if (this.queue.length) { this.startAction(this.queue.shift()); return; }
     if (this.missionLock) return;
     if (this.controlled || (!this.freeWill && this.household)) return;
-    if (G.directorAssign && G.directorAssign(this)) return;
-    if (G.simAction(this)) return;
+    // Safety valve: plugin systems and village events claim decisions before the needs-based choice
+    // below, and not all of them check needs — so a quarter of the village could be kept busy while
+    // starving. Someone famished or dead on their feet eats or sleeps first (a raid still comes first).
+    const urgent = this.needs.hunger < 15 || this.needs.energy < 10;
+    if (G.directorAssign && (!urgent || G.director?.active?.kind === 'raid') && G.directorAssign(this)) return;
+    if (!urgent && G.simAction(this)) return;
     const cands = [];
     const hour = G.env.hour;
     const night = hour < 5.5 || hour > 21.5;

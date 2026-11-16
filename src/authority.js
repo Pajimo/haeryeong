@@ -64,7 +64,7 @@ export function createAuthoritySystem(G) {
 
   // ---------------- marriage ----------------
   const kin = (a, b) => (a.parents || []).includes(b) || (b.parents || []).includes(a) || (a.parents || []).some((p) => (b.parents || []).includes(p)) || (a.children || []).includes(b) || (b.children || []).includes(a) || (a.name.surname === b.name.surname && ROYAL.includes(a.job) && ROYAL.includes(b.job));
-  const eligible = (a, b) => b && b !== a && !kin(a, b) && !(ROYAL.includes(a.job) && ROYAL.includes(b.job)) && !b.dead && !b.hidden && !b.spouse && b.sex !== a.sex && ['young', 'adult'].includes(b.age) && !b.household && !b.serf && !b.merc && !b.royalGuard && b.job !== 'monk' && b.job !== 'king' && b.faction !== 'bandit' && b.faction !== 'hunter';
+  const eligible = (a, b) => b && b !== a && !kin(a, b) && !(ROYAL.includes(a.job) && ROYAL.includes(b.job)) && !b.dead && !b.hidden && !b.spouse && b.sex !== a.sex && ['young', 'adult'].includes(b.age) && !b.household && !b.serf && !b.merc && !b.royalGuard && b.job !== 'monk' && b.job !== 'king' && !['lady', 'consort'].includes(b.palace?.role) && b.faction !== 'bandit' && b.faction !== 'hunter';
   const tierOf = (s) => (ROYAL.includes(s.job) ? 4 : { mansion: 3, house: 2, cottage: 1, hut: 0 }[s.home?.tier] ?? (s.job === 'noble' || s.job === 'official' ? 2 : 1));
   function matchmaker(me) {
     const royal = ROYAL.includes(me.job);

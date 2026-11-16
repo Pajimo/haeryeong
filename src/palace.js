@@ -36,20 +36,85 @@ export function createPalaceSystem(G) {
   function staff() {
     if (st.staffed) return; st.staffed = true;
     const [px, pz] = spot('palace') || [0, -120];
-    const mk = (o) => G.spawn({ x: px + (Math.random() - 0.5) * 16, z: pz - 20 + (Math.random() - 0.5) * 10, ...o });
     // court ladies: the inner court was run almost entirely by women
     for (let i = 0; i < 5; i++) {
-      const g = mk({ sex: 'f', age: chance(0.3) ? 'adult' : 'young', job: 'servant', outfit: 'commoner' });
-      g.palace = { role: 'lady' }; g.serf = null; g.missionLock = false;
-      g.titleOverride = 'Court Lady'; g.courtLady = true;
+      const g = recruit(chance(0.3) ? 'adult' : 'young', true);
+      if (i < 2) { g.palace.rank = 'sanggung'; g.palace.since = G.env.day - 8; ladyTitle(g); }
     }
-    const doc = mk({ sex: chance(0.5) ? 'f' : 'm', age: 'adult', job: 'scholar' });
+    const doc = mkPalace({ sex: chance(0.5) ? 'f' : 'm', age: 'adult', job: 'scholar' });
     doc.palace = { role: 'physician' }; doc.titleOverride = 'Royal Physician'; doc.skills.scholarship = Math.max(doc.skills.scholarship, 6);
-    const hist = mk({ sex: 'm', age: 'adult', job: 'scholar' });
+    const hist = mkPalace({ sex: 'm', age: 'adult', job: 'scholar' });
     hist.palace = { role: 'historian' }; hist.titleOverride = 'Court Historian'; hist.skills.scholarship = Math.max(hist.skills.scholarship, 7);
     log('The inner court is kept by its own household: court ladies, a royal physician, and a historian who writes down everything the King does.', 'story', { x: px, z: pz });
   }
   const staffOf = (role) => G.sims.filter((s) => live(s) && s.palace?.role === role);
+  const mkPalace = (o) => { const [px, pz] = spot('palace') || [0, -120]; return G.spawn({ x: px + (Math.random() - 0.5) * 16, z: pz - 20 + (Math.random() - 0.5) * 10, ...o }); };
+
+  // ---------------- 궁녀: ranks, royal favour and retirement ----------------
+  // Palace women could not marry: they were nominally the King's for life. They rose instead — from
+  // 나인 to 상궁, the eldest 상궁 holding the keys as 제조상궁 — and now and then one caught the King's eye
+  // (승은) and was raised to 후궁, a royal consort. They left only when old, ill, or released.
+  const LADY_TITLE = { nain: 'Court Lady (나인)', sanggung: 'Senior Court Lady (상궁)', jejo: 'Chief Court Lady (제조상궁)', consort: 'Royal Consort (후궁)' };
+  function ladyTitle(s) { s.titleOverride = LADY_TITLE[s.palace?.rank || 'nain']; }
+  function recruit(age = 'young', quiet = false) {
+    const g = mkPalace({ sex: 'f', age, job: 'servant', outfit: 'commoner' });
+    g.palace = { role: 'lady', rank: 'nain', since: G.env.day }; g.serf = null; g.missionLock = false; g.courtLady = true;
+    ladyTitle(g);
+    if (!quiet) log(`A girl from the provinces, ${g.name.full}, enters the palace as a 나인. She will not leave it again for many years.`, 'story', g.pos);
+    return g;
+  }
+  function retire(l) {
+    l.palace = null; l.titleOverride = null; l.courtLady = false; l.job = 'farmer'; l.coins += 120;
+    l.addMoodlet('released', 'Released from palace service', 10, 2880); l.rebuildModel?.();
+    log(`After a lifetime in the inner court, ${l.name.full} is released from service with a small pension and goes to live out her years in the village.`, 'story', l.pos);
+  }
+  function favour(l, k) {
+    l.palace.role = 'consort'; l.palace.rank = 'consort'; ladyTitle(l); l.royalConsort = true; l.courtLady = false;
+    l.changeRel(k, 20, 30); l.needs.honor = 100; l.coins += 200;
+    l.addMoodlet('favour', 'The King\'s favour', 25, 2880);
+    const q = queen();
+    if (q) { q.changeRel(l, -25); q.addMoodlet('slighted', `The King favours ${l.name.given}`, -12, 2880); }
+    log(`승은 — the King's eye has fallen on the court lady ${l.name.full}. She is raised to 후궁, a royal consort, with quarters of her own.${q ? ' The Queen says nothing at all.' : ''}`, 'love', l.pos);
+    if (chance(0.5)) G.tryForBaby(k, l);
+  }
+  function ladiesDaily() {
+    for (const l of staffOf('lady')) {
+      l.palace.since ??= G.env.day; l.palace.rank ||= 'nain';
+      if (l.age === 'elder') { if (chance(0.5)) retire(l); continue; }
+      if (l.palace.rank === 'nain' && G.env.day - l.palace.since >= 6 && chance(0.35)) {
+        l.palace.rank = 'sanggung'; ladyTitle(l); l.addMoodlet('promoted', 'Raised to 상궁', 15, 1440);
+        log(`${l.name.full} has served the inner court long enough to be raised to 상궁, a senior court lady.`, 'story', l.pos);
+      }
+    }
+    // the longest-serving 상궁 heads the inner court
+    const seniors = staffOf('lady').filter((l) => l.palace.rank === 'sanggung' || l.palace.rank === 'jejo').sort((a, b) => a.palace.since - b.palace.since);
+    seniors.forEach((l, i) => {
+      const want = i === 0 ? 'jejo' : 'sanggung'; if (l.palace.rank === want) return;
+      l.palace.rank = want; ladyTitle(l);
+      if (want === 'jejo') log(`${l.name.full} becomes 제조상궁, chief of the court ladies, and holds the keys of the inner court.`, 'story', l.pos);
+    });
+    const k = king();
+    if (k && !G.royalMourning && staffOf('consort').length < 2 && chance(0.08)) {
+      const pool = staffOf('lady').filter((l) => (l.age === 'young' || l.age === 'adult') && !l.pregnant);
+      const score = (l) => l.getRel(k).f + (l.skills.charisma || 0) * 4 + Math.random() * 25;
+      const f = pool.map((l) => [l, score(l)]).sort((a, b) => b[1] - a[1])[0]?.[0];
+      if (f) favour(f, k);
+    }
+    if (k && !G.royalMourning) for (const c of staffOf('consort')) if (!c.pregnant && chance(0.12)) G.tryForBaby(k, c);
+    if (staffOf('lady').length < 5 && chance(0.4)) recruit();
+  }
+  function consort(s) {
+    const k = king(); if (!k) return false;
+    if (chance(0.35)) {
+      const d = Math.hypot(k.pos.x - s.pos.x, k.pos.z - s.pos.z);
+      if (d > 6) { s.startAction({ type: 'goto', dest: [k.pos.x - 1.6, k.pos.z + 0.8], label: 'Going to the King' }); return true; }
+      s.startAction({ type: 'social', target: k, label: 'Keeping the King company' });
+      return true;
+    }
+    const qq = spot('queenQuarters'); if (!qq) return false;
+    s.startAction({ type: 'goto', dest: [qq[0] + (Math.random() - 0.5) * 6, qq[1] + (Math.random() - 0.5) * 6], label: 'In her own quarters' });
+    return true;
+  }
 
   // ---------------- 조회: the dawn assembly ----------------
   // Every official stands at the stone of his grade, the first grade nearest the throne.
@@ -301,6 +366,7 @@ export function createPalaceSystem(G) {
         if (role === 'historian') return historian(s);
         if (role === 'physician') return physician(s);
         if (role === 'lady') return lady(s);
+        if (role === 'consort') return consort(s);
       } catch (e) { console.error('[palace]', e); }
       return false;
     },
@@ -321,6 +387,7 @@ export function createPalaceSystem(G) {
           st.petitions = st.petitions.filter((x) => G.env.day - x.day < 3);
           envoyTick();
           mourningTick();
+          ladiesDaily();
           if (!st.envoy && !G.royalMourning && chance(0.22)) envoy();
           // the court feasts now and then of its own accord
           if (!st.envoy && G.env.day - st.banquetDay > 5 && chance(0.3)) banquet('the King is pleased with the season');
@@ -351,8 +418,12 @@ export function createPalaceSystem(G) {
     },
 
     status() {
-      const l = staffOf('lady').length, h = staffOf('historian').length, d = staffOf('physician').length;
+      const l = staffOf('lady').length, h = staffOf('historian').length, d = staffOf('physician').length, c = staffOf('consort');
+      const chief = staffOf('lady').find((x) => x.palace.rank === 'jejo');
       return [`The palace household: ${l} court ladies${d ? ', a royal physician' : ''}${h ? ', a court historian' : ''}.`,
+        chief ? `${chief.name.full} holds the keys of the inner court as 제조상궁.` : '',
+        c.length ? `Royal consort${c.length > 1 ? 's' : ''}: ${c.map((x) => x.name.full).join(', ')}.` : '',
+        G.royalMourning ? 'The court is in mourning (국상).' : '',
         st.heard + st.ignored ? `${st.heard} petitions heard, ${st.ignored} left unanswered at the gate.` : ''].filter(Boolean);
     },
 
@@ -361,14 +432,14 @@ export function createPalaceSystem(G) {
     // ordinary bondservants with no role, no title and nothing to do.
     serialize() {
       return { ...st, petitions: st.petitions,
-        household: G.sims.filter((s) => live(s) && s.palace?.role).map((s) => [s.id, s.palace.role, s.titleOverride || '']) };
+        household: G.sims.filter((s) => live(s) && s.palace?.role).map((s) => [s.id, s.palace.role, s.titleOverride || '', s.palace.rank || '', s.palace.since ?? null]) };
     },
     restore(d, get) {
       if (!d) return;
       const { household, ...rest } = d; Object.assign(st, rest); G.royalMourning = !!st.mourning;
-      for (const [id, role, title] of household || []) {
+      for (const [id, role, title, rank, since] of household || []) {
         const s = get?.(+id) || G.sims.find((x) => x.id === +id);
-        if (s) { s.palace = { role }; if (title) s.titleOverride = title; s.serf = null; }
+        if (s) { s.palace = { role, rank: rank || (role === 'lady' ? 'nain' : role === 'consort' ? 'consort' : undefined), since: since ?? G.env.day }; if (title) s.titleOverride = title; s.serf = null; if (role === 'lady') s.courtLady = true; }
       }
     },
   };

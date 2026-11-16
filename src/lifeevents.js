@@ -59,7 +59,7 @@ export function createLifeEventsSystem(G) {
   const endBanner = (kind) => { const a = G.director?.active; if (a && a.kind === kind) a.done = true; };
   const drum = (pos, vol = 0.5) => { const A = G.audio; if (!A?.ctx) return; try { A.drumHit(chance(0.3) ? 'ta' : 'kung', vol * (pos ? A.gainFor(pos) : 1)); } catch { /* ignore */ } };
   const spot = (x, z, r = 6) => { for (let i = 0; i < 24; i++) { const a = rr(0, 6.28), d = rr(0, r); const px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d; if (!G.nav.blocked(px, pz, 0.8) && !isWater(px, pz)) return [px, pz]; } return [x, z]; };
-  const single = (s) => alive(s) && !s.spouse && ['young', 'adult'].includes(s.age);
+  const single = (s) => alive(s) && !s.spouse && ['young', 'adult'].includes(s.age) && !['lady', 'consort'].includes(s.palace?.role); // palace women may not marry
   const doAt = (me, x, z, label, fn) => { if (dist(me, x, z) < 4) return fn(); if (me.controlled) return toast('Walk closer first.'); me.startAction({ type: 'goto', dest: [x, z], label, then: () => { if (dist(me, x, z) < 6) fn(); } }); };
   const disposeObj = (o) => { if (!o) return; o.parent?.remove(o); o.traverse?.((m) => { m.geometry?.dispose?.(); if (m.material && !m.material.userData?.keep) m.material.dispose?.(); }); };
 

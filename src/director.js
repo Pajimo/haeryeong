@@ -43,7 +43,7 @@ export class Director {
       // rather than with someone they actually cared for.
       const free = (s) => !s.spouse || s.spouse.dead;
       const kin = (a, b) => a.parents?.includes(b) || b.parents?.includes(a) || (a.parents?.length && a.parents.some((p) => b.parents?.includes(p)));
-      const singles = G.sims.filter((s) => !s.dead && !s.hidden && free(s) && (s.age === 'young' || s.age === 'adult') && s.faction === 'village' && !s.household && !s.jailed && s.job !== 'monk' && s.job !== 'king' && !s.merc && !s.royalGuard);
+      const singles = G.sims.filter((s) => !s.dead && !s.hidden && free(s) && (s.age === 'young' || s.age === 'adult') && s.faction === 'village' && !s.household && !s.jailed && s.job !== 'monk' && s.job !== 'king' && !s.merc && !s.royalGuard && !['lady', 'consort'].includes(s.palace?.role));
       const P = G.popPressure;
       for (const a of singles) {
         if (!free(a) || !chance((a.age === 'young' ? 0.05 : 0.03) + P * 0.22)) continue;

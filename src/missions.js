@@ -337,6 +337,8 @@ export function createMissionsSystem(G) {
     // without you. Only one mission runs at a time, as before, so this never steals one you wanted.
     selfAssign() {
       if (this.active || !this.offers.length) return;
+      // let a new player look around first: nobody wanders off on a task in the opening two hours
+      const now = G.env.day * 24 + G.env.hour; this._t0 ??= now; if (now - this._t0 < 2) return;
       const cat = catalogue(G);
       for (const s of G.household) {
         if (s.dead || !s.freeWill || s.controlled || s.hidden || s.age === 'child' || s.missionLock) continue;

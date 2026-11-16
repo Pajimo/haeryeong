@@ -374,7 +374,7 @@ export class UI {
 
   addTopButton(label, title, fn) { const b = document.createElement('button'); b.textContent = label.split(' ')[0]; b.title = `${label.slice(label.indexOf(' ') + 1)} — ${title}`; b.setAttribute('aria-label', b.title); b.className = 'iconbtn'; b.onclick = fn; let dock = document.getElementById('dock'); if (!dock) { dock = document.createElement('div'); dock.id = 'dock'; dock.className = 'panel lacquer'; document.getElementById('ui').appendChild(dock); } dock.appendChild(b); return b; }
 
-  modal(html) { const el = $('#modal'); el.classList.remove('hidden'); el.innerHTML = html + '<button class="mclose">Close</button>'; $('.mclose', el).onclick = () => el.classList.add('hidden'); document.exitPointerLock?.(); return el; }
+  modal(html) { const el = $('#modal'); el.classList.remove('hidden', 'recap'); el.innerHTML = html + '<button class="mclose">Close</button>'; $('.mclose', el).onclick = () => el.classList.add('hidden'); document.exitPointerLock?.(); return el; }
 
   openKingdom() {
     const G = this.G; const me = G.selected?.household ? G.selected : G.household[0];

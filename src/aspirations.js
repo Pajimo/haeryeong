@@ -1,7 +1,7 @@
 // Aspirations (life goals), satisfaction rewards and Deeds (achievements) for the player's household.
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-const ASPIRATIONS = {
+export const ASPIRATIONS = {
   blade: { name: 'Master of the Blade', ko: '검성', icon: '⚔', desc: 'Become a legend of the sword.', steps: [
     { t: 'Reach Sword skill 6', c: (s) => s.skills.sword >= 6 },
     { t: 'Win 3 duels', c: (s, A) => A.stat(s, 'duels') >= 3 },
