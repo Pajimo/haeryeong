@@ -51,16 +51,24 @@ export function createCareersSystem(G) {
       const orig = eco.changeJob.bind(eco);
       eco.changeJob = (s, job) => { const before = s.job; orig(s, job); if (s.job !== before) st.last[s.id] = day(); };
     },
-    simAction(s) {
-      if (!s.household || !s.freeWill || s.controlled || s.missionLock || s.hidden || s.jailed) return false;
-      if (s.age !== 'young' && s.age !== 'adult') return false;
-      if (!OPEN.includes(s.job)) return false;                       // royals, nobles, officials, bondservants…
-      const h = G.env.hour; if (h < 7 || h > 18) return false;
-      if (Math.min(s.needs.hunger, s.needs.energy) < 25) return false;
-      st.last[s.id] = st.last[s.id] ?? day() - 3;                      // first look comes a few days in
-      if (day() - st.last[s.id] < 6) return false;                     // not again so soon — and not over your choice
-      if (st.tried[s.id] === day() || Math.random() > 0.04) return false;
-      return seek(s);
+    // An hourly look rather than a claim on the next decision: family members spend long stretches in
+    // events and chores and make only a few decisions a day, so a decision-time check almost never ran.
+    update(dt, gm) {
+      if (!G.started) return;
+      this._t = (this._t || 0) + gm; if (this._t < 60) return; this._t = 0;
+      const h = G.env.hour; if (h < 7 || h > 18) return;
+      for (const s of G.household) {
+        if (s.dead || !s.freeWill || s.controlled || s.missionLock || s.hidden || s.jailed || s.away) continue;
+        if (s.age !== 'young' && s.age !== 'adult') continue;
+        if (!OPEN.includes(s.job)) continue;                            // royals, nobles, officials, bondservants…
+        if (Math.min(s.needs.hunger, s.needs.energy) < 25) continue;
+        const a = s.action;                                              // only ordinary pursuits are interrupted
+        if (a && (a.type === 'event' || a.type === 'fight' || a.type === 'flee' || a.type === 'converse' || a.forced || a.work)) continue;
+        st.last[s.id] = st.last[s.id] ?? day() - 3;                      // first look comes a few days in
+        if (day() - st.last[s.id] < 6) continue;                         // not again so soon — and not over your choice
+        if (st.tried[s.id] === day() || Math.random() > 0.35) continue;
+        if (seek(s)) return;                                             // one at a time
+      }
     },
     serialize() { return st; },
     restore(d) { if (d?.last) st.last = d.last; if (d?.tried) st.tried = d.tried; },

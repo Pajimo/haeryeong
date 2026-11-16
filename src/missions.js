@@ -1,7 +1,8 @@
 // GTA-style missions for a Joseon valley + Fame paths (reputation by way of life).
 import * as THREE from 'three';
 import { LAYOUT, BRIDGE, groundAt, riverDist, heightAt, WATER_LEVEL } from './terrain.js';
-import { makeName } from './data.js';
+import { makeName, JOBS } from './data.js';
+const JOBS_PAY = Object.fromEntries(Object.entries(JOBS).map(([k, v]) => [k, v.pay]));
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rr = (a, b) => a + Math.random() * (b - a);
@@ -347,28 +348,61 @@ export function createMissionsSystem(G) {
     // A household member left to their own devices will take work that suits them, rather than waiting
     // to be told. Gated entirely on the "Free will" switch in their panel: turn it off and nobody acts
     // without you. Only one mission runs at a time, as before, so this never steals one you wanted.
+    // ---------- Mission drive ----------
+    // A family member on free will does not drop their trade for any task on the board. A drive builds
+    // only for a reason — they need money fast, a task on offer serves their life goal, a friend has
+    // asked a favour, or they burn to prove themselves — and fades when there is none. Only when it is
+    // full, outside their working hours, do they take on the task that answers that reason.
+    driveReasons(s, cat) {
+      const R = [];
+      if (s.coins < 25) R.push({ k: 'cash', w: 8, why: 'needs money, fast' });
+      else if (s.coins < 70) R.push({ k: 'cash', w: 3, why: 'could use some money' });
+      const takeable = (o) => { const m = cat.find((x) => x.id === o.id); return m && !this.canTake(s, m) && !HANDS_ON.has(m.id) && !(['blade', 'hunt', 'law'].includes(m.path) && (s.skills?.sword || 0) < 4) ? m : null; };
+      const fav = this.offers.find((o) => o.giver && !o.giver.dead && o.giver !== s && s.getRel(o.giver).f > 40 && takeable(o));
+      if (fav) R.push({ k: 'favour', w: 6, why: `${fav.giver.name.given} asked a favour`, offer: fav });
+      const asp = G.systems.find((x) => x.id === 'aspirations')?.data?.[s.id]?.asp;
+      if (asp) {
+        const lean = this.leaning(s);
+        const goal = this.offers.find((o) => { const m = takeable(o); return m && (lean[m.path] || 0) >= 0.9; });
+        if (goal) R.push({ k: 'goal', w: 4, why: 'a task on offer serves their life goal', offer: goal });
+      }
+      if (s.has?.('Ambitious') || s.has?.('Brave') || s.has?.('Hot-headed')) R.push({ k: 'prove', w: 2, why: 'restless to make a name' });
+      return { R, takeable };
+    },
+    atWork(s) {
+      // jobs come first: someone with a real trade keeps their working hours for it
+      const pay = (JOBS_PAY[s.job] ?? 0); const h = G.env.hour;
+      if (s.action?.work) return true;
+      return pay >= 5 && h >= 8 && h < 17 && (s.workedToday || 0) < 300;
+    },
     selfAssign() {
-      if (this.active || !this.offers.length) return;
       // let a new player look around first: nobody wanders off on a task in the opening two hours
       const now = G.env.day * 24 + G.env.hour; this._t0 ??= now; if (now - this._t0 < 2) return;
       const cat = catalogue(G);
+      this.drive ||= {};
       for (const s of G.household) {
-        if (s.dead || !s.freeWill || s.controlled || s.hidden || s.age === 'child' || s.missionLock) continue;
+        const D = (this.drive[s.id] ||= { v: 0, why: '' });
+        if (s.dead || !s.freeWill || s.controlled || s.age === 'child') { D.v = Math.max(0, D.v - 5); continue; }
+        const { R, takeable } = this.driveReasons(s, cat);
+        if (!R.length) { D.v = Math.max(0, D.v - 6); D.why = ''; continue; }
+        const top = R.slice().sort((a, b) => b.w - a.w)[0];
+        D.v = Math.min(100, D.v + R.reduce((a, r) => a + r.w, 0) * (this.atWork(s) ? 0.5 : 1)); D.why = top.why;
+        if (D.v < 100 || this.active) continue;
+        if (s.hidden || s.missionLock || s.jailed || this.atWork(s)) continue;
         if (s.hp < s.maxHp * 0.75) continue;                                   // hurt: mend first
         if (this.cooldown?.[s.id] != null && G.env.day <= this.cooldown[s.id]) continue;   // a day's rest after a failure
-        const leaning = this.leaning(s);
-        for (const offer of this.offers) {
-          const m = cat.find((x) => x.id === offer.id); if (!m) continue;
-          if (this.canTake(s, m)) continue;
-          const want = leaning[m.path] || 0; if (want <= 0) continue;
-          if (['blade', 'hunt', 'law'].includes(m.path) && (s.skills?.sword || 0) < 4) continue;   // no volunteering for a fight they would lose
-          if (HANDS_ON.has(m.id)) continue;   // tasks the autopilot cannot do well stay yours to play
-          if (Math.random() > want * 0.5) continue;
-          this.start(s, offer);
-          G.ui?.toast(`${s.name.given} has taken this on: “${m.title}”`);
-          G.log(`${s.name.full} took the task on ${s.sex === 'f' ? 'her' : 'his'} own account — it suits ${s.sex === 'f' ? 'her' : 'him'}.`, 'story', s.pos);
-          return;
-        }
+        // the task that answers the reason
+        let offer = top.offer;
+        if (!offer && top.k === 'cash') offer = this.offers.filter((o) => takeable(o)).sort((a, b) => (takeable(b).pay || 0) - (takeable(a).pay || 0))[0];
+        if (!offer) { const lean = this.leaning(s); offer = this.offers.filter((o) => takeable(o)).sort((a, b) => (lean[takeable(b).path] || 0) - (lean[takeable(a).path] || 0))[0]; }
+        if (!offer) { D.v = 80; continue; }                                    // nothing suitable posted yet
+        const m = takeable(offer);
+        D.v = 0;
+        this.start(s, offer);
+        if (this.active?.actor !== s) continue;
+        G.ui?.toast(`🎯 ${s.name.given} has taken on “${m.title}” — ${top.why}.`);
+        G.log(`${s.name.full} took on “${m.title}” of ${s.sex === 'f' ? 'her' : 'his'} own accord: ${top.why}.`, 'story', s.pos);
+        return;
       }
     },
     // Missions were written for a player at the controls: nothing walked a character to the objective.
@@ -519,10 +553,12 @@ export function createMissionsSystem(G) {
     },
     panelHtml(s) {
       if (!s.household) return ''; const t = this.titleOf(s);
-      return t ? `<div class="facts">${PATHS[t.path].icon} Known as <b>“${esc(t.title)}”</b></div>` : '';
+      const D = this.drive?.[s.id];
+      const bar = s.freeWill && s.age !== 'child' ? `<div class="facts mdrive-row" title="Fills only for a reason; at full they take on a task outside their working hours">🎯 Mission drive <span class="mdrive"><i style="width:${Math.round(D?.v || 0)}%"></i></span> <small>${esc(D?.why || 'content with their work')}</small></div>` : '';
+      return (t ? `<div class="facts">${PATHS[t.path].icon} Known as <b>“${esc(t.title)}”</b></div>` : '') + bar;
     },
-    serialize() { return { fame: this.fame, history: this.history }; },
-    restore(d) { this.fame = d?.fame || {}; this.history = d?.history || []; },
+    serialize() { return { fame: this.fame, history: this.history, drive: this.drive || {} }; },
+    restore(d) { this.fame = d?.fame || {}; this.history = d?.history || []; this.drive = d?.drive || {}; },
   };
   return MS;
 }
