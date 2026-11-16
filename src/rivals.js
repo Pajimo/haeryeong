@@ -81,7 +81,7 @@ export function createRivalsSystem(G) {
         G.log(`Whispers at the well: ${head.name.given} of the ${C} clan says ${tgt.name.given} ${lie}. Some villagers believe it.`, 'danger', head.pos);
         this.witnessed('the slander');
       } else if (k === 'fine') {
-        const payer = G.household[0]; const amt = Math.min(Math.floor(payer.coins), Math.round(15 + this.enmity / 4));
+        const payer = G.household[0]; if (!payer) return; const amt = Math.min(Math.floor(payer.coins), Math.round(15 + this.enmity / 4));
         if (amt <= 0) return;
         payer.coins -= amt; head.coins += Math.round(amt / 2);
         G.log(`A magistrate's clerk — a cousin of the ${C} clan — fines the ${payer.name.surname} household ${amt} nyang for "unpaid levies".`, 'danger', payer.pos);

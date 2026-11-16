@@ -37,9 +37,26 @@ export class Director {
       const couples = G.sims.filter((s) => s.sex === 'f' && !s.dead && s.spouse && !s.spouse.dead && !s.pregnant && ['young', 'adult'].includes(s.age) && s.spouse.age !== 'child' && (s.children?.length || 0) < 3 && !s.household);
       const press = G.popPressure;
       if (G.aliveCount < G.popCap) for (const m of couples) if (chance(0.12 + press * 0.3)) G.tryForBaby(m.spouse, m);
-      // young singles may find love
-      const singles = G.sims.filter((s) => !s.dead && !s.spouse && s.age === 'young' && s.faction === 'village' && !s.household);
-      for (const a of singles) { if (!chance(0.05 + G.popPressure * 0.22)) continue; const b = singles.find((x) => x.sex !== a.sex && !x.spouse && x !== a); if (b) { a.changeRel(b, 8, 12); if (a.getRel(b).r > 70 - G.popPressure * 25 && chance(0.3 + G.popPressure * 0.35)) this.wedding(a, b); } }
+      // singles may find love. This used to consider only the five-day 'young' band, so anyone who
+      // reached adulthood unmatched — and every widow, since a dead spouse still filled s.spouse —
+      // stayed single for life; and it always paired a single with the first name in the list
+      // rather than with someone they actually cared for.
+      const free = (s) => !s.spouse || s.spouse.dead;
+      const kin = (a, b) => a.parents?.includes(b) || b.parents?.includes(a) || (a.parents?.length && a.parents.some((p) => b.parents?.includes(p)));
+      const singles = G.sims.filter((s) => !s.dead && !s.hidden && free(s) && (s.age === 'young' || s.age === 'adult') && s.faction === 'village' && !s.household && !s.jailed && s.job !== 'monk' && s.job !== 'king' && !s.merc && !s.royalGuard);
+      const P = G.popPressure;
+      for (const a of singles) {
+        if (!free(a) || !chance((a.age === 'young' ? 0.05 : 0.03) + P * 0.22)) continue;
+        let b = null, best = -Infinity;
+        for (const x of singles) {
+          if (x === a || x.sex === a.sex || !free(x) || kin(a, x)) continue;
+          const r = a.getRel(x); const sc = r.f * 0.5 + r.r + (x.age === a.age ? 8 : 0) + Math.random() * 20;
+          if (sc > best) { best = sc; b = x; }
+        }
+        if (!b) continue;
+        a.changeRel(b, 8, 12);
+        if (!G.royalMourning && a.getRel(b).r > 70 - P * 25 && chance(0.3 + P * 0.35)) this.wedding(a, b);
+      }
     }
     // weddings
     for (const w of this.weddings) w.t -= gm;
@@ -51,7 +68,7 @@ export class Director {
     const bandits = G.sims.filter((s) => s.faction === 'bandit' && !s.dead);
     const W = {
       raid: (h > 18.5 || h < 2) && bandits.length >= 3 && day - this.lastRaidDay >= 2 ? 2.2 : 0,
-      festival: h > 18 && h < 21 && day - this.lastFestivalDay >= 2 ? 3 : 0,
+      festival: !G.royalMourning && h > 18 && h < 21 && day - this.lastFestivalDay >= 2 ? 3 : 0,
       tournament: h > 9.5 && h < 14 && day - this.lastTourneyDay >= 2 ? 2.5 : 0,
       market: h > 8 && h < 13 ? 1.2 : 0,
       decree: h > 9 && h < 17 ? 1.0 : 0,
@@ -59,7 +76,7 @@ export class Director {
       omen: 0.4,
       plot: (h > 21 || h < 3) && G.king && !G.king.dead && G.sims.filter((s) => s.factions?.lotus && !s.dead).length >= 2 && day - (this.lastPlotDay ?? -1) >= 3 ? 1.2 : 0,
       exam: h > 9.5 && h < 13 && day - (this.lastExamDay ?? -2) >= 3 ? 2.0 : 0,
-      banquet: h > 17.5 && h < 20.5 && G.king && !G.king.dead && day - (this.lastBanquetDay ?? -1) >= 2 ? 1.4 : 0,
+      banquet: !G.royalMourning && h > 17.5 && h < 20.5 && G.king && !G.king.dead && day - (this.lastBanquetDay ?? -1) >= 2 ? 1.4 : 0,
     };
     for (const [key, ev] of Object.entries(this.custom || {})) { try { W[key] = ev.weight(G, h, day) || 0; } catch { W[key] = 0; } }
     const k = weightedPick(Object.keys(W), (x) => W[x]);
@@ -406,6 +423,10 @@ export class Director {
 
   wedding(a, b) {
     const G = this.G;
+    // Idempotent: a proposal accepted on a timer (and re-proposed before it fired) used to hold the
+    // same wedding again and again, and nothing stopped a married sim being wed to a second spouse.
+    const taken = (s) => s.spouse && !s.spouse.dead;
+    if (!a || !b || a === b || a.dead || b.dead || a.spouse === b || taken(a) || taken(b)) return false;
     a.married = b.married = true; a.spouse = b; b.spouse = a;
     a.changeRel(b, 15, 15);
     if (b.home !== a.home && a.home) { if (b.home) b.home.residents = b.home.residents.filter((x) => x !== b); b.home = a.home; a.home.residents.push(b); if (a.household) { b.household = true; G.household.push(b); G.ui?.refreshHousehold(); } }

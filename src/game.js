@@ -389,7 +389,7 @@ export class Game {
     if (!lawful && att.faction !== 'bandit' && v.faction !== 'bandit' && !v.outlaw) {
       if (!att.outlaw) { att.outlaw = true; this.log(`${att.name.full} attacked ${v.name.full} without cause! The guards are coming.`, 'danger', att.pos); }
       this.economy?.commitCrime(att, 60, null);
-      for (const s of this.sims) if (s.job === 'police' || s.job === 'soldier' || s.job === 'general') { if (!s.dead && !s.combat.target && s.pos.distanceTo(att.pos) < 70 && !s.controlled) { s.startFight(att, true); s.arresting = att; } }
+      for (const s of this.sims) if (s.job === 'police' || s.job === 'soldier' || s.job === 'general') { if (s !== att && !s.dead && !s.combat.target && s.pos.distanceTo(att.pos) < 70 && !s.controlled) { s.startFight(att, true); s.arresting = att; } }
       for (const s of this.sims) if (!s.dead && s !== att) s.getRel(att).f -= 15;
     }
     // victim response

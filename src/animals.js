@@ -592,7 +592,13 @@ export class Animals {
 
   update(dt, gm, camPos) {
     this.frame = (this.frame || 0) + 1;
-    for (const a of this.list) a.update(dt, gm, camPos);
+    for (const a of this.list) {
+      // same quarantine as sims: a creature that chased a NaN target must not carry NaN onward
+      const P = a.pos;
+      if (!Number.isFinite(P.x) || !Number.isFinite(P.z) || !Number.isFinite(P.y)) { const b = a._safe || a.home || [0, 0]; P.set(b[0], 0, b[1]); a.target = null; if (a.state === 'chase' || a.state === 'flee') a.state = 'idle'; }
+      else (a._safe ||= [0, 0], a._safe[0] = P.x, a._safe[1] = P.z);
+      a.update(dt, gm, camPos);
+    }
     // remove long-dead animals, respawn wildlife occasionally
     for (const a of this.list) if (a.dead && a.deadT > 180) { this.G.scene.remove(a.root); a.removed = true; }
     this.list = this.list.filter((a) => !a.removed);

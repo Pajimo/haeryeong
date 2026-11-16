@@ -75,11 +75,12 @@ export function createExpeditionsSystem(G) {
       G.log(`📜 Letter from the caravan (${R.name}): ${msg}`, 'story');
     },
     arrive(trip) {
-      const R = REALM[trip.realm]; const P = G.economy.prices; const owner = G.household[0];
+      const R = REALM[trip.realm]; const P = G.economy.prices; const owner = G.household[0] || (trip.leader != null ? G.sims.find((s) => s.id === trip.leader && !s.dead) : null);
       const leader = trip.leader != null ? G.sims.find((s) => s.id === trip.leader) : null;
       let gross = 0; for (const [k, n] of Object.entries(trip.cargo)) gross += n * (P[k] || 10) * (R.wants[k] || 1.1);
       const mult = Math.max(0.2, 1 - trip.loss + trip.bonus) * (leader ? 1 + leader.skills.charisma * 0.025 : 0.9);
       const takings = Math.round(gross * mult);
+      if (!owner) { G.log(`The caravan returns from ${R.name}, but there is no one left of the house to receive it. The drovers sell the goods and go their way.`, 'story'); return; }
       owner.earn(takings);
       let gift = '';
       if (leader && !leader.dead) {

@@ -88,7 +88,7 @@ export function createMigrationSystem(G) {
         const press = G.popPressure;
         if (chance(0.5 + press * 0.45)) setTimeout(arrive, 1500 + Math.random() * (press > 0.35 ? 4000 : 24000));
         if (press > 0.3 && chance(press * 0.5)) setTimeout(arrive, 2500 + Math.random() * 6000);
-        if (chance(0.5 - press * 0.35)) depart();
+        if (chance(Math.max(0, 0.45 - press * 0.9))) depart(); // nobody packs up and leaves a half-empty valley
       } catch (e) { console.error('[migration]', e); }
     },
     simMenuItems(me, o) {

@@ -182,6 +182,7 @@ export function createPalaceSystem(G) {
   // causeway and sits out over the water: the King, the Queen, the ministers of rank, and the court
   // ladies who serve them.
   function banquet(reason) {
+    if (G.royalMourning) return false; // no music in the palace while the court mourns
     const seats = objOf('banquet'); if (!seats.length) return false;
     const k = king(); if (!k) return false;
     const guests = [k, queen(), ...G.sims.filter((s) => live(s) && !s.hidden && rankOf(s) >= 3 && !ROYAL.includes(s.job)).slice(0, 8),
@@ -249,6 +250,28 @@ export function createPalaceSystem(G) {
     st.envoy = null;
   }
 
+  // ---------------- 국상: royal mourning ----------------
+  // When a King dies the whole realm mourns for three days: no music, no banquets, no weddings and no
+  // festivals; the court puts on undyed hemp and the new King receives envoys only after it ends.
+  function mourningBegin(d) {
+    st.mourning = { until: G.env.day + 3, name: d.name.full, id: d.id };
+    G.royalMourning = true;
+    for (const s of G.sims) if (live(s) && s.faction === 'village') s.addMoodlet('gukssang', `Mourning King ${d.name.given}`, -4, 4320);
+    for (const s of G.sims) if (live(s) && (rankOf(s) > 0 || s.palace?.role)) s.addMoodlet('gukssangCourt', 'In mourning hemp for the late King', -6, 4320);
+    log(`⚫ 국상 — King ${d.name.full} is dead. The court goes into three days of mourning: the drums are silent, the banquet hall is shut, and no wedding may be held in the valley.`, 'death', spot('courtyard'));
+    // the historian records it, the ladies keen at the gate
+    const h = staffOf('historian')[0]; if (h) st.records.unshift({ day: G.env.day, text: `The King ${d.name.full} departed this world. The court wept at the gate.` });
+    const gate = spot('palaceGate');
+    if (gate) staffOf('lady').slice(0, 4).forEach((l, i) => { if (l.controlled) return; l.cancelAction?.(); l.startAction({ type: 'event', dest: [gate[0] - 3 + i * 2, gate[1] + 4], anim: 'kneel', dur: 60, look: gate, label: 'Keening for the late King (곡)' }); });
+  }
+  function mourningTick() {
+    const m = st.mourning; if (!m) { G.royalMourning = false; return; }
+    if (G.env.day < m.until) return;
+    st.mourning = null; G.royalMourning = false;
+    log(`The three days of mourning for King ${m.name} are over. The hemp is folded away, and the drums of the palace are heard again.`, 'decree', spot('courtyard'));
+    const k = king(); if (k) setTimeout(() => { try { banquet(`as ${k.name.given}'s reign truly begins`); } catch {} }, 3000);
+  }
+
   // ---------------- a coronation ----------------
   function coronation(k) {
     if (!live(k)) return;
@@ -261,7 +284,7 @@ export function createPalaceSystem(G) {
       o.cancelAction?.(); o.startAction({ type: 'use', obj: stone, label: 'Bowing to the new King' }); n++;
     }
     for (const s of G.sims) if (live(s) && s.faction === 'village') s.addMoodlet?.('newking', 'A new King is crowned', 10, 2880);
-    log(`👑 ${k.name.full} receives the mandate in the throne hall. ${n} officials bow at their rank stones; the drums are heard in the village.`, 'festival', spot('courtyard'));
+    log(`👑 ${k.name.full} receives the mandate in the throne hall. ${n} officials bow at their rank stones${G.royalMourning ? ', still in mourning hemp for the late King' : '; the drums are heard in the village'}.`, 'festival', spot('courtyard'));
     setTimeout(() => { try { banquet(`for the crowning of ${k.name.full}`); } catch {} }, 4000);
   }
 
@@ -291,12 +314,14 @@ export function createPalaceSystem(G) {
     onEvent(name, p) {
       try {
         if (name === 'ready') staff();
+        if (name === 'death' && p?.sim?.job === 'king' && !p.sim.missionSpawn) mourningBegin(p.sim);
         if (name === 'crowned' && p?.sim) coronation(p.sim);
         if (name === 'day') {
           answerPetitions(); answerPetitions();
           st.petitions = st.petitions.filter((x) => G.env.day - x.day < 3);
           envoyTick();
-          if (!st.envoy && chance(0.22)) envoy();
+          mourningTick();
+          if (!st.envoy && !G.royalMourning && chance(0.22)) envoy();
           // the court feasts now and then of its own accord
           if (!st.envoy && G.env.day - st.banquetDay > 5 && chance(0.3)) banquet('the King is pleased with the season');
         }
@@ -340,7 +365,7 @@ export function createPalaceSystem(G) {
     },
     restore(d, get) {
       if (!d) return;
-      const { household, ...rest } = d; Object.assign(st, rest);
+      const { household, ...rest } = d; Object.assign(st, rest); G.royalMourning = !!st.mourning;
       for (const [id, role, title] of household || []) {
         const s = get?.(+id) || G.sims.find((x) => x.id === +id);
         if (s) { s.palace = { role }; if (title) s.titleOverride = title; s.serf = null; }

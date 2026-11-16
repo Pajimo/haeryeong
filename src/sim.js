@@ -410,6 +410,15 @@ export class Sim {
 
   // ---------- Per-frame update ----------
   update(dt, gm) {
+    // quarantine: a non-finite position must never survive a frame, or it spreads to anyone who
+    // chases, follows or fights this sim. Put them back where they last stood.
+    const P = this.pos;
+    if (!Number.isFinite(P.x) || !Number.isFinite(P.y) || !Number.isFinite(P.z)) {
+      const b = this._safe || this.home?.door || [0, 0];
+      P.set(b[0], Number.isFinite(b[2]) ? b[2] : 0, b[1]);
+      if (this.combat?.target && !Number.isFinite(this.combat.target.pos.x)) this.endFight?.();
+      if (!this._nanWarned) { this._nanWarned = true; console.warn('[sim] non-finite position repaired', this.name?.full, this.action?.type, this.action?.label); }
+    } else (this._safe ||= [0, 0, 0], this._safe[0] = P.x, this._safe[1] = P.z, this._safe[2] = P.y);
     if (this.dead) { this.deadT = (this.deadT || 0) + gm; this.char.setAnim('dead', 5); this.char.update(dt, 0); this.syncTransform(); return; }
     // needs
     const decay = { hunger: 0.095, energy: 0.065, social: 0.075, fun: 0.08, hygiene: 0.045, honor: 0.025 };
@@ -634,7 +643,10 @@ export class Sim {
 
   // ---------- Combat ----------
   startFight(target, nonlethal = false) {
-    if (this.dead || target.dead) return;
+    // A sim told to fight himself (a soldier answering a fight he started; a rebel picked from his own
+    // band) closed to distance zero, divided by it, and turned his position into NaN — and every
+    // fighter who then chased him caught it. That is where the NaN geometry warnings came from.
+    if (!target || target === this || this.dead || target.dead) return;
     this.cancelAction();
     this.action = { type: 'fight', target, t: 0, phase: 'do', label: nonlethal ? `Dueling ${target.name.given}` : `Fighting ${target.name.given}` };
     this.combat.target = target; this.combat.nonlethal = nonlethal; this.currentLabel = this.action.label;

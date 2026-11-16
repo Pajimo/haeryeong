@@ -147,7 +147,7 @@ export function createUnderworldSystem(G) {
       if (leader) { leader.setHidden(false); leader.missionLock = false; leader.away = null; const d = leader.home?.door || [0, 0]; leader.pos.set(d[0] + 1, leader.pos.y, d[1] + 1); G.ui?.refreshHousehold?.(); }
       for (const m of lost) { m.hp = 1; m.die(null); }
       const pay = success ? Math.round(c.pay * (lost.length ? 0.9 : 1)) : Math.round(c.pay * 0.25);
-      G.household[0].earn(pay);
+      (G.household[0] || leader)?.earn?.(pay);
       this.company.rep += success ? (c.risk > 0.3 ? 12 : 6) : -4; if (c.shady && success) this.company.rep -= 2;
       this.company.done += success ? 1 : 0;
       if (c.kills && success) { for (const b of G.sims.filter((s) => !s.dead && s.faction === 'bandit' && !s.isChief).slice(0, 2 + Math.floor(Math.random() * 2))) b.die(ms[0] || null); }

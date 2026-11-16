@@ -81,7 +81,7 @@ export function createWrestleSystem(G) {
         me.wrestlingChampion = true; me.needs.honor = 100; me.addMoodlet('cheonha', 'Ssireum champion (천하장사)', 30, 2880);
         const ox = G.animals?.spawn?.('ox', me.pos.x + 3, me.pos.z + 2, { home: [me.home?.door?.[0] ?? me.pos.x, me.home?.door?.[1] ?? me.pos.z], range: 6 });
         if (ox) { ox.ownerId = me.id; ox.petName = 'Champion'; }
-        G.household[0].earn(40);
+        (G.household[0] || me).earn(40);
         G.log(`🐂 ${me.name.full} throws three men in a row and is crowned ssireum champion (천하장사) of the Dano festival! The prize bull is led home with a red cloth on its horns.`, 'tournament', me.pos);
         G.systems.find((x) => x.id === 'missions')?.addFame?.(me, 'blade', 10);
       } });
