@@ -251,6 +251,9 @@ export class Sim {
     if (a.type === 'use' && a.phase === 'do' && a.obj && a.t > 0) this.G.factions?.notify(this, { type: 'use', kind: a.obj.kind, minutes: a.t });
     this.G.emit?.('actionEnd', { sim: this, action: a, completed: a.type === 'use' ? a.phase === 'do' && a.t >= (a.dur || 0) * 0.95 : true });
     if (a.obj) a.obj.users.delete(this);
+    // a fight replaced by anything else is over: a stale combat target made the rest of the game think
+    // this person was still fighting (a boar long gone kept a mission autopilot standing aside)
+    if (a.type === 'fight' && this.combat) { this.combat.target = null; this.combat.blocking = false; }
     if (a.partner && a.partner.action && a.partner.action.partner === this && a.type === 'converse') { const p = a.partner; p.action.partner = null; p.endAction(); }
     if (this.hidden) this.setHidden(false);
     this.char.setProp(null);

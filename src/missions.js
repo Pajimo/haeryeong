@@ -9,6 +9,9 @@ const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 const P = (s) => [s.pos.x, s.pos.z];
 
+// missions that need a player at the controls (riding a race; sneaking past watchers) — never self-assigned
+const HANDS_ON = new Set(['race', 'taxman', 'jadeseal', 'poison']);
+
 // ---------- Fame paths ----------
 export const PATHS = {
   blade: { name: 'Blade', ko: '검', icon: '⚔', titles: ['Unknown', 'Wandering Blade', 'Sword of the Valley', 'The Crimson Blade', 'Sword Saint of Haeryeong'] },
@@ -266,6 +269,7 @@ export function createMissionsSystem(G) {
     },
     finish(ok, reason) {
       const M = this.active; if (!M) return;
+      this.releaseAuto(M);
       this.active = null; if (M.actor) M.actor.missionHero = false; this.beacon.visible = false; this.hud.classList.add('hidden'); G.env.spiritWindTarget = null;
       // Swallowing this silently is dangerous: stage end handlers are what clear missionLock on
       // escorted villagers, so a throw here froze someone out of all AI permanently.
@@ -347,6 +351,8 @@ export function createMissionsSystem(G) {
           const m = cat.find((x) => x.id === offer.id); if (!m) continue;
           if (this.canTake(s, m)) continue;
           const want = leaning[m.path] || 0; if (want <= 0) continue;
+          if (['blade', 'hunt', 'law'].includes(m.path) && (s.skills?.sword || 0) < 4) continue;   // no volunteering for a fight they would lose
+          if (HANDS_ON.has(m.id)) continue;   // tasks the autopilot cannot do well stay yours to play
           if (Math.random() > want * 0.5) continue;
           this.start(s, offer);
           G.ui?.toast(`${s.name.given} has taken this on: “${m.title}”`);
@@ -355,6 +361,60 @@ export function createMissionsSystem(G) {
         }
       }
     },
+    // Missions were written for a player at the controls: nothing walked a character to the objective.
+    // So a household member who took a task on their own account (free will) accepted it and then went
+    // on cooking and chatting until it failed. While you are not steering them, they now pursue it:
+    // walk (or run) to each objective, fight back, defeat or subdue the targets, and escort at a walk.
+    autopilot(M) {
+      const s = M.actor; if (!s || s.dead || s.controlled || s.hidden) { this.releaseAuto(M); return; }
+      if (s.household && !s.freeWill) { this.releaseAuto(M); return; }   // free will off: you direct them
+      // badly hurt on a task they chose themselves: break off and go home rather than die for it
+      if (s.hp < s.maxHp * 0.35 && (s.action?.type === 'fight' || G.sims.some((o) => !o.dead && o.combat?.target === s))) {
+        s.endFight?.(); s.cancelAction?.();
+        const door = s.home?.door || [0, 0];
+        this.releaseAuto(M);
+        this.finish(false, `${s.name.given} was badly hurt and broke off the fight.`);
+        s.startAction({ type: 'goto', dest: [door[0] + 1, door[1] + 1], run: true, label: 'Limping home' });
+        return;
+      }
+      // already fighting (an actual fight — a stale combat target left behind after a beast ran off
+      // used to make the autopilot stand aside forever)
+      if (s.action?.type === 'fight' && s.combat?.target && !s.combat.target.dead) return;
+      // anyone attacking them gets an answer
+      // anyone attacking them — or attacking whoever the mission put in their care (the minister, the
+      // girl, the twins, grandmother) — gets an answer
+      const ward = new Set(Object.values(M.v).flat().filter((x) => x && x.pos && x.name && !x.dead && x.faction === 'village'));
+      if (M.giver) ward.add(M.giver);
+      const foe = G.sims.find((o) => !o.dead && o.combat?.target && (o.combat.target === s || ward.has(o.combat.target)) && o.pos.distanceTo(s.pos) < 18);
+      if (foe && (s.fighter || s.armed)) { s.startFight(foe, !!foe.missionSpawn && /subdue|arrest/i.test(M.stage.text)); return; }
+      const w = M.stage.where?.(M);
+      if (!w) { this.releaseAuto(M); return; }                           // waiting stages: live normally meanwhile
+      s.missionLock = true; M.autoLock = true;
+      const d = Math.hypot(s.pos.x - w[0], s.pos.z - w[1]);
+      const text = this.fill(M.stageText || M.stage.text, M);
+      // a fighting stage: engage any proper target within reach, wherever it has wandered
+      if (/defeat|cut down|kill|slay|subdue|arrest|chase|hunt/i.test(text)) {
+        const gentle = /subdue|arrest/i.test(text);
+        // only what is actually within reach (a fight begun from 100 m was dropped and restarted every
+        // step, and nobody ever walked anywhere); the objective itself is walked to below
+        const close = (p) => Math.hypot(p.x - s.pos.x, p.z - s.pos.z) < 14;
+        const atObj = (p) => Math.hypot(p.x - w[0], p.z - w[1]) < 3;   // the mission's own quarry first
+        const sims = G.sims.filter((o) => !o.dead && !o.household && o !== s && (o.missionSpawn || o.faction === 'bandit' || o.outlaw) && close(o.pos));
+        const beasts = (G.animals?.list || []).filter((a2) => !a2.dead && close(a2.pos) && ['boar', 'tiger', 'wolf', 'bear'].includes(a2.type));
+        const t = [...sims, ...beasts].find((x) => atObj(x.pos)) || sims[0] || beasts[0];
+        if (t) { s.startFight(t, gentle); if (gentle) s.arresting = t; return; }
+      }
+      const radius = M.stage.radius || 3;
+      if (d > Math.max(1.2, radius * 0.7)) {
+        const a = s.action;
+        const escort = /escort|slowly|stay close|keep the/i.test(text);
+        if (!(a?.type === 'goto' && a._mission && Math.hypot(a.dest[0] - w[0], a.dest[1] - w[1]) < 2.5)) {
+          s.startAction({ type: 'goto', dest: [w[0], w[1]], run: !escort && d > 12, label: `🎯 ${text}`, _mission: true });
+        }
+        return;
+      }
+    },
+    releaseAuto(M) { if (M?.autoLock && M.actor) { M.actor.missionLock = false; M.autoLock = false; if (M.actor.action?._mission) M.actor.cancelAction(); } },
     // how much each fame path suits them, from their life goal, their trade and their temper
     leaning(s) {
       const w = { blade: 0, shadow: 0, trade: 0, law: 0, heart: 0, hunt: 0 };
@@ -398,6 +458,8 @@ export function createMissionsSystem(G) {
       try { r = this.stealthCheck(M, gm) || M.stage.tick(M, gm); } catch (e) { console.error(e); r = null; }
       if (r === 'ok') this.next(); else if (typeof r === 'string' && r.startsWith('fail')) this.finish(false, r.slice(5));
       if (!this.active) return;
+      try { this.autopilot(this.active); } catch (e) { if (!this._apErr) { this._apErr = true; console.error('[missions] autopilot', e); } }
+      if (!this.active) return;   // the autopilot may have broken off a lost fight
       // waypoint + HUD
       const w = this.active.stage.where?.(this.active);
       if (w) { this.beacon.visible = true; this.beacon.position.set(w[0], groundAt(w[0], w[1]), w[1]); this.ring.scale.setScalar(1 + Math.sin(performance.now() / 250) * 0.08); G.env.spiritWindTarget = { x: w[0], z: w[1] }; } else this.beacon.visible = false;
