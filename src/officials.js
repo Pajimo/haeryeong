@@ -130,7 +130,7 @@ export function createOfficialsSystem(G) {
     for (const v of voters) {
       let best = null, bs = -1e9;
       for (const c of cands) {
-        let sc = (v === c ? 60 : 0) + v.getRel(c).f * 0.8 + c.needs.honor * 0.25 + (v.name.surname === c.name.surname ? 15 : 0) + (st.bribes[c.id]?.includes(v.id) ? 25 : 0) + (c === headman() ? 6 : 0) + (Math.random() - 0.5) * 30;
+        let sc = (v === c ? 60 : 0) + v.getRel(c).f * 0.8 + c.needs.honor * 0.25 + (v.name.surname === c.name.surname ? 15 : 0) + (st.bribes[c.id]?.includes(v.id) ? 25 : 0) + (sys('society')?.standing?.(c) || 0) * 22 + (c === headman() ? 6 : 0) + (Math.random() - 0.5) * 30;
         const fame = sys('missions')?.fame?.[c.id]; if (fame) sc += Math.min(20, Object.values(fame).reduce((a, b) => a + b, 0) / 10);
         if (sc > bs) { bs = sc; best = c; }
       }

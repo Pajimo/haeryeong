@@ -448,6 +448,28 @@ something to spare will press coins into the hand of a friend who has fallen on 
 person's hand — come to resent each other, talk each other down when they gossip, and take a rival's
 success badly. In one run, four villagers were competing for the sash at once.
 
+### And the valley acts on it
+
+A reputation nobody responds to is just a number, so standing (about -1 to +1, weak until word has
+genuinely spread) now changes how people treat you:
+
+- **Greetings.** Someone well spoken of gets a bow from people who owe them none. Someone the valley has
+  turned against gets *"Hm."* — and if they are notorious enough and not already a friend, they are cut
+  dead and the conversation ends there.
+- **Prices.** A trader gives a good price to a name he likes and squeezes one he doesn't. Measured on the
+  same farmer with standing varied: rice costs **12 at -1, 10 at 0, 9 at +1**, and sells for more as
+  standing rises. This is the quietest consequence and probably the one you feel most often.
+- **Distance.** Villagers physically give a wide berth to someone disgraced — *"Keeping clear of
+  Gwang-ryong"* — though a friend stays a friend whatever is said.
+- **Courtship.** What the valley says about someone counts when a villager sets their heart, and a suitor
+  nobody speaks well of has to work harder to be accepted.
+- **The election.** The headman vote now weighs what people have heard, alongside honour, friendship,
+  surname and bribes.
+
+Charity reaches further than friendship: a villager will help a well-disposed neighbour, not only a close
+friend. That threshold matters — at the stricter one, no comfortable villager in the valley happened to
+have a poor friend, and the mechanic never once fired.
+
 Cost: the simulation step went from 0.9 ms to about 2.2 ms with ambition, family and society all running,
 against roughly 5 ms of rendering — comfortable inside a 60 fps frame, and the quality governor scales
 the graphics rather than the simulation on weaker machines.

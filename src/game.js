@@ -210,9 +210,20 @@ export class Game {
     const setA = (s, a) => { if (!s.controlled) { s.char.setAnim(a, 10); } };
     switch (kind) {
       case 'greet': {
-        const bowing = li.job === 'noble' || li.job === 'general' || li.age === 'elder';
+        // How you are greeted is the first thing reputation buys you. Someone the valley speaks well of
+        // gets a bow from people who owe them none; someone it speaks badly of gets a cold word, and if
+        // they are notorious enough and not already a friend, they get cut dead and the talk ends there.
+        const soc = this.systems.find((x) => x.id === 'society');
+        const st = soc?.standing ? soc.standing(li) : 0;
+        if (st < -0.45 && r.f < 25 && !sp.household) {
+          sp.say(pick(['…', 'Hm.', 'I have nothing to say to you.', 'Keep your distance.']), 'talk'); setA(sp, 'talk');
+          sp.changeRel(li, -2);
+          if (convo && !convo.hold) convo.dur = 0; // cut dead: the talk ends on the next tick
+          break;
+        }
+        const bowing = li.job === 'noble' || li.job === 'general' || li.age === 'elder' || st > 0.45;
         sp.say(bowing ? line('bow') : line('greet', li.name.given), 'talk'); setA(sp, bowing ? 'bow' : 'talk');
-        sp.changeRel(li, 1.5); break;
+        sp.changeRel(li, 1.5 + st * 1.5); break;
       }
       case 'chat': sp.say(line('chat'), 'talk'); setA(sp, 'talk'); sp.changeRel(li, 2.5 * ch); sp.needs.fun += 3; break;
       case 'joke': {

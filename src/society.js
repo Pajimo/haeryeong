@@ -116,6 +116,20 @@ export function createSocietySystem(G) {
     return { score: n ? +(v / n).toFixed(2) : 0, tellings: n, reach: n };
   }
 
+  // A single number for how the valley regards someone, about -1 to +1. Weak until word has actually
+  // spread: two people having heard something is not yet a reputation. Cached per game-hour, because
+  // every greeting, every price and every vote now asks for it.
+  function standing(s) {
+    if (!live(s)) return 0;
+    const h = Math.floor(G.env.day * 24 + G.env.hour);
+    if (s._standAt === h) return s._stand;
+    const r = reputation(s);
+    const spread = Math.min(1, r.reach / 12);
+    const v = Math.max(-1, Math.min(1, r.score / 3.5)) * spread;
+    s._standAt = h; s._stand = v;
+    return v;
+  }
+
   // ---------------- noticing what happened ----------------
   // Rather than asking every other system to announce itself, society looks at the valley each morning
   // and sees what has changed since yesterday. Anything worth remarking on becomes news.
@@ -176,23 +190,23 @@ export function createSocietySystem(G) {
   // ---------------- friends ----------------
   // Scanning every relationship (a villager may know a hundred people) on each decision was the single
   // most expensive thing here, so the list is rebuilt at most once a game-hour per person.
-  function friendsOf(s) {
+  function friendsOf(s, bar = 48) {
     const h = Math.floor(G.env.day * 24 + G.env.hour);
-    if (s._friendsAt === h && s._friends) return s._friends;
+    if (bar === 48 && s._friendsAt === h && s._friends) return s._friends;
     const out = [];
     for (const [id, r] of s.rel || []) {
-      if (r.f < 48) continue;
+      if (r.f < bar) continue;
       const o = G.sims.find((x) => x.id === id);
       if (around(o) && o !== s.spouse && o.home !== s.home) out.push(o);
     }
-    s._friendsAt = h; s._friends = out;
+    if (bar === 48) { s._friendsAt = h; s._friends = out; }
     return out;
   }
 
   // a villager with something to spare will put it in a ruined friend's hand
   function helpFriend(s) {
     if (s.coins < 60) return false;
-    const needy = friendsOf(s).filter((o) => (o.coins < 25 || (o.debt && o.coins < 60)) && !o._helpedDay);
+    const needy = friendsOf(s, 32).filter((o) => (o.coins < 25 || (o.debt && o.coins < 60)) && !o._helpedDay);
     if (!needy.length) return false;
     const o = needy[0];
     if (Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) > 70) return false;
@@ -203,6 +217,24 @@ export function createSocietySystem(G) {
     s.startAction({ type: 'social', target: o, label: `Helping ${o.name.given}` });
     st.helped++;
     if (chance(0.4)) log(`${s.name.full} pressed ${give} nyang into ${o.name.full}'s hand. Nobody asked ${s.sex === 'f' ? 'her' : 'him'} to.`, 'story', o.pos);
+    return true;
+  }
+
+  // People give a wide berth to someone the valley has turned against. Visible, and it makes a ruined
+  // name feel like one: you walk through the market and it empties a little ahead of you.
+  function avoid(s) {
+    let worst = null, ws = -0.4;
+    for (const o of G.sims) {
+      if (!around(o) || o === s || o === s.spouse) continue;
+      if (Math.hypot(o.pos.x - s.pos.x, o.pos.z - s.pos.z) > 11) continue;
+      if (s.getRel(o).f > 20) continue;              // a friend is a friend whatever is said
+      const st2 = standing(o);
+      if (st2 < ws) { ws = st2; worst = o; }
+    }
+    if (!worst) return false;
+    const ang = Math.atan2(s.pos.x - worst.pos.x, s.pos.z - worst.pos.z);
+    s.startAction({ type: 'goto', dest: [s.pos.x + Math.sin(ang) * 14, s.pos.z + Math.cos(ang) * 14], label: `Keeping clear of ${worst.name.given}` });
+    if (chance(0.25)) s.say(pick(['...', 'Not near me.', 'I want no part of that one.']), 'talk');
     return true;
   }
 
@@ -217,7 +249,17 @@ export function createSocietySystem(G) {
   }
 
   const S = {
-    id: 'society', st, reputation, gossipTurn, addNews: add,
+    id: 'society', st, reputation, gossipTurn, addNews: add, standing,
+
+    // A trader gives a good price to someone well spoken of and squeezes a man nobody trusts. This is
+    // the quietest consequence of reputation and probably the one players feel most often.
+    init() {
+      const E = G.economy; if (!E || E._socPatched) return;
+      E._socPatched = true;
+      const buy = E.buyPrice.bind(E), sell = E.sellPrice.bind(E);
+      E.buyPrice = (s, k) => Math.max(1, Math.ceil(buy(s, k) * (1 - standing(s) * 0.12)));
+      E.sellPrice = (s, k) => Math.max(1, Math.floor(sell(s, k) * (1 + standing(s) * 0.12)));
+    },
 
     simAction(s) {
       if (!around(s) || s.household) return false;
@@ -227,6 +269,7 @@ export function createSocietySystem(G) {
       if (!chance(0.1)) return false;
       try {
         if (chance(0.3) && helpFriend(s)) return true;
+        if (chance(0.35) && avoid(s)) return true;
         return seekFriend(s);
       } catch (e) { console.error('[society]', e); return false; }
     },

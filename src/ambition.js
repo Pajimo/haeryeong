@@ -193,7 +193,10 @@ export function createAmbitionSystem(G) {
         // pick someone they actually fancy, rather than the first single in array order
         const c = G.sims.filter((o) => own(o) && o !== s && !o.spouse && o.sex !== s.sex && o.age !== 'elder' && o.age !== 'child');
         if (!c.length) return false;
-        const score = (o) => s.getRel(o).r * 2 + s.getRel(o).f + honor(o) * 0.3 + (o.home?.tier === 'mansion' ? 20 : 0) + Math.random() * 40;
+        const soc = sys('society');
+        const score = (o) => s.getRel(o).r * 2 + s.getRel(o).f + honor(o) * 0.3
+          + (soc?.standing ? soc.standing(o) * 25 : 0)   // what the valley says about them counts
+          + (o.home?.tier === 'mansion' ? 20 : 0) + Math.random() * 40;
         a.who = c.sort((x, y) => score(y) - score(x))[0].id;
         return true;
       },
@@ -204,7 +207,12 @@ export function createAmbitionSystem(G) {
         s.startAction({ type: 'social', target: t, label: `Courting ${t.name.given}` });
         return true;
       },
-      ready: (s, a) => { const t = G.sims.find((o) => o.id === a.who); return !!t && !t.dead && !t.spouse && s.getRel(t).r > 55 && t.getRel(s).r > 45; },
+      ready: (s, a) => {
+        const t = G.sims.find((o) => o.id === a.who); if (!t || t.dead || t.spouse) return false;
+        // a suitor nobody speaks well of must work harder to be accepted
+        const bar = 45 - (sys('society')?.standing?.(s) || 0) * 18;
+        return s.getRel(t).r > 55 && t.getRel(s).r > bar;
+      },
       finish: (s, a) => {
         const t = G.sims.find((o) => o.id === a.who); if (!t) return false;
         G.director?.wedding?.(s, t);
