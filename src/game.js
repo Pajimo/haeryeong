@@ -215,8 +215,11 @@ export class Game {
         // they are notorious enough and not already a friend, they get cut dead and the talk ends there.
         const soc = this.systems.find((x) => x.id === 'society');
         const st = soc?.standing ? soc.standing(li) : 0;
-        if (st < -0.45 && r.f < 25 && !sp.household) {
-          sp.say(pick(['…', 'Hm.', 'I have nothing to say to you.', 'Keep your distance.']), 'talk'); setA(sp, 'talk');
+        const hs = this.systems.find((x) => x.id === 'houses');
+        const feud = hs?.atFeud ? hs.atFeud(sp, li) : false;
+        if ((feud || st < -0.45) && r.f < 25 && !sp.household) {
+          sp.say(feud ? pick([`A ${li.name.surname}.`, 'Not to your house, I don\u2019t.', 'We have nothing to say.'])
+            : pick(['\u2026', 'Hm.', 'I have nothing to say to you.', 'Keep your distance.']), 'talk'); setA(sp, 'talk');
           sp.changeRel(li, -2);
           if (convo && !convo.hold) convo.dur = 0; // cut dead: the talk ends on the next tick
           break;

@@ -417,6 +417,43 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## Houses — 가문
+
+`src/houses.js`. The valley had rivalry of two kinds and both were about the player: `rivals.js` gives
+the player's household one scheming enemy clan, and `memories.js` gives individuals a blood-debt to
+brood over. Between ordinary families there was nothing — a man could be robbed by his neighbour and his
+brothers would greet the thief warmly the next morning, because a wrong was only ever a number between
+two people.
+
+A **house** is everyone in the village sharing a surname. Houses have standing of their own, computed
+each morning from their members' honour, court rank, wealth, reputation and shame — so you can see at a
+glance that the Hong are the first house in the valley and who is the poorest. Click anyone to see their
+house, its rank, who it is at odds with and who it is bound to.
+
+**Wrongs become collective.** A theft, a duel, an unlawful killing against one member is a grievance of
+the whole house, and when it passes the threshold the two houses are at **feud**:
+
+> ⚔ The Baek house and the Oh house are at odds over thieving — Oh Tae-gang and Baek Ye-wol. Neither
+> will sit at the other's table.
+
+Declaring a feud drops every relationship across both houses — in one test, 54 pairs fell from +0.8 to
+−26 at a stroke. After that, members who have never met cut each other dead in the street
+(*"We have nothing to say."*), turn away when they pass (*"Turning away from a Baek"*), refuse to court
+across the quarrel, and their young men come to blows with fists.
+
+**Feuds end** three ways: time wears them down; an elder pays **80 nyang in compensation**; or — far
+better, and how such things were actually settled — the houses marry into each other:
+
+> 🕊 The Jo and Kim houses have made their peace — the marriage of Jo Mi-ok and Kim Woo-hun. Old men on
+> both sides say it was time.
+
+A marriage also makes the two houses **allies**, who forgive each other far more readily thereafter.
+You can step in yourself: click a member of a house yours is feuding with to pay the price of peace.
+
+Tuned against measurement rather than taste. At a threshold of 55 with a 1.2/day decay, seven days of
+ordinary village life left the worst grudge at 43 and no feud ever formed; at 48 with two thefts
+weighing 26 each, the same week produced two live feuds. A feud is heavy — it should be something you
+see, and still something that matters when you do.
 ## What the village knows about you
 
 `src/society.js`. Gossip already existed as a conversation kind, but it was scenery: it picked a random

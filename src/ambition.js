@@ -191,7 +191,9 @@ export function createAmbitionSystem(G) {
       want: (s) => (s.spouse || s.age === 'elder' ? 0 : 1.5) * (1 + (has(s, 'Romantic') ? 1.8 : 0)),
       begin: (s, a) => {
         // pick someone they actually fancy, rather than the first single in array order
-        const c = G.sims.filter((o) => own(o) && o !== s && !o.spouse && o.sex !== s.sex && o.age !== 'elder' && o.age !== 'child');
+        const H = sys('houses');
+        const c = G.sims.filter((o) => own(o) && o !== s && !o.spouse && o.sex !== s.sex && o.age !== 'elder' && o.age !== 'child'
+          && !(H?.atFeud && H.atFeud(s, o)));   // no one courts across a family quarrel
         if (!c.length) return false;
         const soc = sys('society');
         const score = (o) => s.getRel(o).r * 2 + s.getRel(o).f + honor(o) * 0.3
