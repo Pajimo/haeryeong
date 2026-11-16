@@ -452,6 +452,27 @@ its standing, and the petitioner goes home with less honour than he came with �
 is quiet again."* You can take a grievance there yourself, from your own menu, if you hold no rank.
 
 Measured over six days: 9 petitions heard, 1 left unanswered.
+
+**경회루 — the banquet pavilion**, standing on twelve stone pillars out over a walled lotus pond west of
+the palace, reached by a stone causeway. The one building in a Joseon palace meant purely for pleasure
+and state occasions, and the court uses it:
+
+> 🏮 A banquet at 경회루 — for the crowning of Yi San-gyu. 3 of the court sit out over the water while the
+> musicians play.
+
+**Envoys** arrive from Buyeo, Okjeo, the Khitan, Silla, the Jurchen hills or Wa across the water, wait at
+the gate with gifts and a letter, and are received in the throne hall. How it goes depends on the King's
+temper: a gracious one is left tribute and open roads, a greedy one demands more than they brought and
+they leave before the second cup — which costs the throne its standing.
+
+> The envoy of Wa across the water was received with honour. They leave 121 nyang in tribute and a
+> promise of open roads.
+
+**A coronation** is now a ceremony rather than a line of text. The new King takes the throne, every
+official bows at the stone of his grade, the whole valley feels it, and a banquet follows.
+
+> 👑 Yi San-gyu receives the mandate in the throne hall. 16 officials bow at their rank stones; the drums
+> are heard in the village.
 ## Bug hunt
 
 A systematic sweep for silently-broken code — conditions that can never be true, properties read but

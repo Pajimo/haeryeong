@@ -177,6 +177,94 @@ export function createPalaceSystem(G) {
     }
   }
 
+  // ---------------- 연회: the royal banquet at 경회루 ----------------
+  // The one building in the palace meant purely for pleasure and state occasions. The court crosses the
+  // causeway and sits out over the water: the King, the Queen, the ministers of rank, and the court
+  // ladies who serve them.
+  function banquet(reason) {
+    const seats = objOf('banquet'); if (!seats.length) return false;
+    const k = king(); if (!k) return false;
+    const guests = [k, queen(), ...G.sims.filter((s) => live(s) && !s.hidden && rankOf(s) >= 3 && !ROYAL.includes(s.job)).slice(0, 8),
+      ...staffOf('lady').slice(0, 3)].filter((s) => live(s) && !s.controlled);
+    let n = 0;
+    for (const g of guests) {
+      const seat = seats.find((o) => o.users.size < (o.def.cap || 1)); if (!seat) break;
+      g.cancelAction?.();
+      g.startAction({ type: 'use', obj: seat, label: `At the royal banquet` });
+      g.addMoodlet?.('banquet', 'Feasted at 경회루', 18, 2880);
+      n++;
+    }
+    if (n < 3) return false;
+    st.banquetDay = G.env.day;   // only once it actually happened, or a failed attempt blocks it for days
+    for (const a of guests) for (const b of guests) if (a !== b) a.changeRel(b, 4, 0);
+    log(`🏮 A banquet at 경회루 — ${reason}. ${n} of the court sit out over the water while the musicians play.`, 'festival', spot('banquetHall'));
+    return true;
+  }
+
+  // ---------------- an envoy from another kingdom ----------------
+  const KINGDOMS = ['Buyeo', 'Okjeo', 'the Khitan', 'Silla', 'the Jurchen hills', 'Wa across the water'];
+  function envoy() {
+    if (st.envoy || !spot('palaceGate')) return;
+    const k = king(); if (!k) return;
+    const from = pick(KINGDOMS);
+    const gate = spot('palaceGate');
+    const party = [];
+    for (let i = 0; i < 3; i++) {
+      const e = G.spawn({ x: gate[0] + (Math.random() - 0.5) * 6, z: gate[1] + 26 + i * 2, sex: i ? (chance(0.5) ? 'f' : 'm') : 'm',
+        age: 'adult', job: i === 0 ? 'noble' : 'soldier', surname: null });
+      e.envoy = true; e.missionLock = true; e.faction = 'village';
+      e.startAction({ type: 'goto', dest: [gate[0], gate[1] - 6], label: `An envoy of ${from}, come to the court` });
+      party.push(e);
+    }
+    st.envoy = { from, day: G.env.day, party: party.map((p) => p.id), stage: 'arriving' };
+    log(`🎌 An envoy of ${from} is at the palace gate, with gifts and a letter for the King.`, 'decree', gate);
+  }
+
+  function envoyTick() {
+    const E = st.envoy; if (!E) return;
+    const party = E.party.map((id) => G.sims.find((s) => s.id === id)).filter(live);
+    if (!party.length) { st.envoy = null; return; }
+    if (G.env.day - E.day < 1) return;
+    const k = king();
+    if (!k) { for (const p of party) { p.missionLock = false; p.removed = true; p.dead = true; p.hidden = true; } st.envoy = null; return; }
+    // the King receives them, and his temper decides how it goes
+    const warm = k.has?.('Gentle') || k.has?.('Cheerful') || k.needs.honor > 60;
+    const greedy = k.has?.('Greedy');
+    const RW = sysOf('royalWorks') || sysOf('royalPower');
+    if (warm && !greedy) {
+      const gift = 120 + Math.floor(Math.random() * 180);
+      k.earn(gift);
+      k.needs.honor = Math.min(100, k.needs.honor + 8);
+      sysOf('society')?.addNews?.(k, 'office');
+      log(`The envoy of ${E.from} was received with honour. They leave ${gift} nyang in tribute and a promise of open roads.`, 'decree', k.pos);
+      banquet(`in honour of the envoy of ${E.from}`);
+    } else if (greedy) {
+      log(`The King demanded more of the envoy of ${E.from} than they had brought. They left before the second cup, and said little on the way out.`, 'danger', k.pos);
+      k.needs.honor = Math.max(0, k.needs.honor - 6);
+      const RP = sysOf('royalPower'); if (RP?.st && typeof RP.st.minsim === 'number') RP.st.minsim = Math.max(0, RP.st.minsim - 3);
+    } else {
+      log(`The envoy of ${E.from} was heard in the throne hall and sent away with courtesy and no promises.`, 'decree', k.pos);
+    }
+    for (const p of party) { p.missionLock = false; p.startAction({ type: 'goto', dest: [spot('palaceGate')[0], spot('palaceGate')[1] + 80], label: 'Leaving the valley' }); p._leaving = performance.now(); }
+    st.envoy = null;
+  }
+
+  // ---------------- a coronation ----------------
+  function coronation(k) {
+    if (!live(k)) return;
+    const t = objOf('throne')[0];
+    const stones = objOf('rankstone');
+    if (t && !k.controlled) { k.cancelAction?.(); k.startAction({ type: 'use', obj: t, label: 'Receiving the mandate' }); }
+    let n = 0;
+    for (const o of G.sims.filter((s) => live(s) && !s.hidden && !s.controlled && rankOf(s) > 0 && s !== k).slice(0, 16)) {
+      const stone = stones.find((x) => x.users.size === 0); if (!stone) break;
+      o.cancelAction?.(); o.startAction({ type: 'use', obj: stone, label: 'Bowing to the new King' }); n++;
+    }
+    for (const s of G.sims) if (live(s) && s.faction === 'village') s.addMoodlet?.('newking', 'A new King is crowned', 10, 2880);
+    log(`👑 ${k.name.full} receives the mandate in the throne hall. ${n} officials bow at their rank stones; the drums are heard in the village.`, 'festival', spot('courtyard'));
+    setTimeout(() => { try { banquet(`for the crowning of ${k.name.full}`); } catch {} }, 4000);
+  }
+
   const S = {
     id: 'palace', st,
     records: () => st.records,
@@ -200,10 +288,18 @@ export function createPalaceSystem(G) {
       try { assembly(); maybePetition(); } catch (e) { console.error('[palace] update', e); }
     },
 
-    onEvent(name) {
+    onEvent(name, p) {
       try {
         if (name === 'ready') staff();
-        if (name === 'day') { answerPetitions(); answerPetitions(); st.petitions = st.petitions.filter((p) => G.env.day - p.day < 3); }
+        if (name === 'crowned' && p?.sim) coronation(p.sim);
+        if (name === 'day') {
+          answerPetitions(); answerPetitions();
+          st.petitions = st.petitions.filter((x) => G.env.day - x.day < 3);
+          envoyTick();
+          if (!st.envoy && chance(0.22)) envoy();
+          // the court feasts now and then of its own accord
+          if (!st.envoy && G.env.day - st.banquetDay > 5 && chance(0.3)) banquet('the King is pleased with the season');
+        }
       } catch (e) { console.error('[palace] event', e); }
     },
 

@@ -29,6 +29,7 @@ export const KINDS = {
   study: { label: 'Study Classics', ko: '공부', work: 'study', adv: { fun: 0.2, energy: -0.15, honor: 0.3 }, dur: [100, 160], anim: 'study', cap: 3, skill: 'scholarship' },
   serve: { label: 'Run the Jumak', ko: '주모', work: 'jumak', adv: { social: 0.6, energy: -0.2 }, dur: [120, 180], anim: 'talk', cap: 1, skill: 'charisma' },
   templeWork: { label: 'Temple Duties', ko: '수행', work: 'shrine', adv: { honor: 0.6, energy: -0.1 }, dur: [100, 160], anim: 'pray', cap: 2 },
+  banquet: { label: 'At the banquet', ko: '연회', adv: { fun: 2.4, social: 1.6, hunger: 1.8, honor: 0.5 }, dur: [60, 120], anim: 'talk', cap: 10 },
   rankstone: { label: 'Stand at your rank', ko: '품계석', adv: { honor: 0.5, energy: -0.1 }, dur: [40, 90], anim: 'bow', cap: 1, court: true },
   petitiondrum: { label: 'Strike the petition drum', ko: '신문고', adv: { honor: 1.2, fun: 0.4 }, dur: [10, 18], anim: 'talk', cap: 1 },
   court: { label: 'Attend Court', ko: '조회', work: 'pavilion', adv: { honor: 0.8, energy: -0.15 }, dur: [100, 160], anim: 'court', cap: 8 },
@@ -600,6 +601,51 @@ export function buildWorld(scene, quality) {
       obbs.push({ x: dx, z: dz, hw: 1.4, hd: 0.6, rot: 0 });
       addObj('petitiondrum', dx, dz + 1.6, 0);
       spots.petitionDrum = [dx, dz + 1.6];
+    }
+
+    // ---- 경회루: the banquet pavilion on its lotus pond ----
+    // The one building in a Joseon palace meant purely for pleasure and state occasions: an open floor
+    // on stone pillars standing out over the water, where the King feasted envoys and his own court.
+    {
+      const qx = px - 68, qz = pz - 6, qy = heightAt(qx, qz);   // clear of the west wall at px-46
+      const pw = 30, pd = 24;
+      // The pond is a RAISED stone basin, not a hole: the terrain here is not flat and a sunken slab
+      // simply disappeared into the hillside, leaving the pavilion standing on dry grass. A formal
+      // palace pond was a built thing anyway, walled and faced in cut stone.
+      const lip = 0.95;
+      for (const [ox, oz, w2, d2] of [[0, -pd / 2, pw + 1.8, 0.9], [0, pd / 2, pw + 1.8, 0.9], [-pw / 2, 0, 0.9, pd + 1.8], [pw / 2, 0, 0.9, pd + 1.8]]) {
+        const ey = heightAt(qx + ox, qz + oz);
+        B.add('stone', new THREE.BoxGeometry(w2, lip + 1.2, d2), '#cfc9bd', mtx(qx + ox, ey + lip / 2 - 0.3, qz + oz));
+      }
+      // the water, just under the lip
+      B.add('vc', new THREE.BoxGeometry(pw - 0.4, 0.3, pd - 0.4), '#24525c', mtx(qx, qy + lip - 0.42, qz));
+      obbs.push({ x: qx, z: qz - pd / 2, hw: pw / 2 + 0.8, hd: 0.5, rot: 0 });
+      obbs.push({ x: qx, z: qz + pd / 2, hw: pw / 2 + 0.8, hd: 0.5, rot: 0 });
+      obbs.push({ x: qx - pw / 2, z: qz, hw: 0.5, hd: pd / 2 + 0.8, rot: 0 });
+      // lotus pads
+      for (let i = 0; i < 26; i++) {
+        const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * (pw / 2 - 3);
+        B.add('vc', new THREE.CylinderGeometry(0.5 + Math.random() * 0.35, 0.5, 0.06, 7), '#3f6b3a', mtx(qx + Math.cos(a) * r, qy + lip - 0.26, qz + Math.sin(a) * r * 0.78));
+      }
+      // the pavilion itself: 12 stone pillars, an open floor, a great tiled roof
+      const fw = 17, fd = 12, fh = 2.9;
+      for (let i = -2; i <= 2; i++) for (const sz of [-1, 0, 1]) {
+        const cx = qx + i * (fw / 4.2), cz = qz + sz * (fd / 2.6);
+        B.add('stone', new THREE.CylinderGeometry(0.42, 0.5, fh + lip, 8), '#d6d0c4', mtx(cx, qy + (fh + lip) / 2, cz));
+      }
+      B.add('wood', new THREE.BoxGeometry(fw + 1.4, 0.4, fd + 1.4), '#8a6b45', mtx(qx, qy + fh + lip + 0.2, qz));
+      B.add('floor', new THREE.BoxGeometry(fw, 0.18, fd), '#c9a877', mtx(qx, qy + fh + lip + 0.48, qz));
+      for (const sx of [-1, 1]) for (let i = -1; i <= 1; i++) B.add('vc', new THREE.CylinderGeometry(0.2, 0.22, 2.6, 8), C.red, mtx(qx + i * (fw / 2.4), qy + fh + lip + 1.78, qz + sx * fd / 2.2));
+      B.add('dancheong', new THREE.BoxGeometry(fw + 0.6, 0.45, fd + 0.6), '#5d7f6a', mtx(qx, qy + fh + lip + 3.2, qz));
+      const pr2 = roofGeometry({ w: fw + 1, d: fd + 1, o: 2.4, H: 3.1, lift: 1.25 });
+      B.add('tile', pr2.geo, '#ffffff', mtx(qx, qy + fh + lip + 3.5, qz));
+      B.add('vc', new THREE.BoxGeometry(pr2.rh * 2 + 0.7, 0.5, 0.8), C.ridge, mtx(qx, qy + fh + lip + 3.5 + 3.2, qz));
+      // the causeway from the palace wall
+      for (let i = 0; i < 4; i++) B.add('stone', new THREE.BoxGeometry(3.2, 0.3, 2.4), '#d2ccc0', mtx(qx + fw / 2 + 1.6 + i * 2.6, qy + lip + fh * 0.2 - i * 0.26, qz));
+      addObj('banquet', qx, qz + fd / 2 - 1.5, 0, { cap: 10 });
+      addObj('banquet', qx - 4, qz - fd / 2 + 1.5, Math.PI, { cap: 10 });
+      spots.banquetHall = [qx, qz + fd / 2 + 3];   // 'pavilion' is already taken by the village one
+      obbs.push({ x: qx, z: qz, hw: fw / 2, hd: fd / 2, rot: 0 });
     }
 
     spots.council = [px, pz - 22];
