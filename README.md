@@ -446,18 +446,27 @@ Now the valley farms:
 > 🍚 Yi Ji-dong opened his stores and bought 40 sacks for the village. There was a queue at the gate
 > before dawn.
 
-### The bug underneath it: there were never four seasons
+### A correction: the season bug I reported was not real
 
-Building this turned up something much larger. **`env.season` was never defined.** The almanac, the
-director's festivals, the soundscape, life events, hunting and my own harvest all read it, and all of
-them saw `undefined`. Most had `|| 'autumn'` as a fallback, so for the whole life of the project the
-valley has had four seasons on screen and exactly **one in its logic**: Chuseok at every festival
-whatever the month, autumn birdsong falling on snow, autumn life-events in spring. And `hunting.js` has
-a winter branch guarded by `if (env.season !== 'winter') return;` — which could never once run.
+While building this I reported that `env.season` was never defined and that eight files had been
+branching on a permanent "autumn" for the life of the project. **That was wrong, and the fix I shipped
+for it was actively harmful.**
 
-`Seasons.current` returns an object (`{ key, en, ko, icon }`) while every consumer compares against the
-string key, so `env.season` now exposes `G.seasons.current.key`. Eight files started working correctly
-on one line.
+`env.season` is assigned every frame by `Seasons.update()` (`season.js:73`). It was always working. My
+test harness drives `G.update()` directly in a loop to fast-forward days, which bypasses the main loop's
+separate `G.seasons.update(...)` call — and the browser pane I measure in throttles `requestAnimationFrame`
+to nothing when it is not on screen, so the real loop was not running either. `env.season` read as
+undefined because of how I was measuring, not because of the code.
+
+The "fix" — defining `env.season` as a getter — made `season.js:73`'s assignment throw, because ES
+modules are strict. That silently killed the rest of `Seasons.update()`: **snow accumulation, water
+freezing over in deep winter, the seasonal shader weights and the daily seasonal moods**. A real
+regression, introduced to fix an imaginary one. It is reverted, and `main.js` now carries a comment
+warning against doing it again.
+
+The lesson, recorded because it cost real work: a harness that drives subsystems directly is not the
+game, and a value that looks undefined may just be one the loop had not set yet.
+
 ## What a life leaves behind
 
 `src/inheritance.js`. Death used to destroy property. When a villager died the only thing that happened
