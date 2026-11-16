@@ -80,7 +80,17 @@ export function createMigrationSystem(G) {
         if (s._leaving && (!s.action || performance.now() - s._leaving > 240000)) { s.dispose?.(); s.removed = true; s.dead = true; s.hidden = true; }
       }
     },
-    onEvent(name) { if (name === 'day') { try { if (chance(0.55)) setTimeout(arrive, 5000 + Math.random() * 30000); if (chance(0.5)) depart(); } catch (e) { console.error('[migration]', e); } } },
+    onEvent(name) {
+      if (name !== 'day') return;
+      try {
+        // The arrival was scheduled on a real-time timer, so at any speed above 1x most days' arrivals
+        // never landed. Families now come sooner, and far more readily, the emptier the valley is.
+        const press = G.popPressure;
+        if (chance(0.5 + press * 0.45)) setTimeout(arrive, 1500 + Math.random() * (press > 0.35 ? 4000 : 24000));
+        if (press > 0.3 && chance(press * 0.5)) setTimeout(arrive, 2500 + Math.random() * 6000);
+        if (chance(0.5 - press * 0.35)) depart();
+      } catch (e) { console.error('[migration]', e); }
+    },
     simMenuItems(me, o) {
       if (!me.household || o !== me) return [];
       return [{ label: '🧭 I’m stuck — step to clear ground', fn: () => {

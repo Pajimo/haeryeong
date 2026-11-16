@@ -35,10 +35,11 @@ export class Director {
     if (this.familyT <= 0) {
       this.familyT = 90;
       const couples = G.sims.filter((s) => s.sex === 'f' && !s.dead && s.spouse && !s.spouse.dead && !s.pregnant && ['young', 'adult'].includes(s.age) && s.spouse.age !== 'child' && (s.children?.length || 0) < 3 && !s.household);
-      if (G.aliveCount < G.popCap) for (const m of couples) if (chance(0.12)) G.tryForBaby(m.spouse, m);
+      const press = G.popPressure;
+      if (G.aliveCount < G.popCap) for (const m of couples) if (chance(0.12 + press * 0.3)) G.tryForBaby(m.spouse, m);
       // young singles may find love
       const singles = G.sims.filter((s) => !s.dead && !s.spouse && s.age === 'young' && s.faction === 'village' && !s.household);
-      for (const a of singles) { if (!chance(0.05)) continue; const b = singles.find((x) => x.sex !== a.sex && !x.spouse && x !== a); if (b) { a.changeRel(b, 8, 12); if (a.getRel(b).r > 70 && chance(0.3)) this.wedding(a, b); } }
+      for (const a of singles) { if (!chance(0.05 + G.popPressure * 0.22)) continue; const b = singles.find((x) => x.sex !== a.sex && !x.spouse && x !== a); if (b) { a.changeRel(b, 8, 12); if (a.getRel(b).r > 70 - G.popPressure * 25 && chance(0.3 + G.popPressure * 0.35)) this.wedding(a, b); } }
     }
     // weddings
     for (const w of this.weddings) w.t -= gm;

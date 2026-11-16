@@ -30,6 +30,11 @@ export class Game {
   // number. The old hard-coded birth gates (105 and 110) sat BELOW the starting population of ~125, so
   // they were false from the first frame and no villager could ever conceive — every child in the game
   // was the player's. Building more houses now genuinely makes room for more families.
+  // How empty the valley is, 0 (full) to 1 (deserted). Courtship, conception and immigration all lean
+  // on this: with 24 of 40 houses standing empty the village should be making matches and taking in
+  // families quickly, not dwindling. Without it the population spiralled from 141 to 65 over 18 days,
+  // because people age from young to elder in about twelve days and marriages could not keep pace.
+  get popPressure() { const c = this.popCap; return Math.max(0, Math.min(1, (c - this.aliveCount) / c)); }
   get popCap() {
     let homes = 0;
     for (const h of this.world?.houses || []) if (!h.virtual) homes += h.tier === 'mansion' ? 6 : h.tier === 'house' ? 5 : h.tier === 'cottage' ? 4 : 3;

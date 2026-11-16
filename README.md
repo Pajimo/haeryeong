@@ -493,6 +493,20 @@ official bows at the stone of his grade, the whole valley feels it, and a banque
 
 > 👑 Yi San-gyu receives the mandate in the throne hall. 16 officials bow at their rank stones; the drums
 > are heard in the village.
+## The valley no longer dies out
+
+A long run exposed a demographic spiral: starting at 141 people, the valley fell to **65 over eighteen
+days** and did not recover. Twenty-four of its forty houses stood empty. The cause was structural —
+villagers age from young to elder in about twelve days of a sixteen-day year, and courtship, conception
+and immigration were all fixed-rate, so they could not keep pace with the dying. Worse, immigration was
+scheduled on a *real-time* timer, so at any speed above 1x most days' arrivals never landed at all.
+
+`G.popPressure` (0 when full, 1 when deserted) now feeds all three. A valley with empty houses makes
+matches sooner and more readily, conceives more often, and takes in families quickly; a full one settles
+down. Over the same eighteen days the population now holds between 133 and 142, with a healthy spread of
+ages instead of an inverted pyramid of elders.
+
+This is the kind of bug that only shows up if you actually let a game run.
 ## Bug hunt
 
 A systematic sweep for silently-broken code — conditions that can never be true, properties read but
