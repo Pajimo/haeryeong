@@ -103,10 +103,25 @@ export function bridgeInfo(x, z) {
   }
   return { on: false };
 }
+// Raised walkable floors (decks): a pavilion floor on pillars, a stair-bridge up to it. Axis-aligned
+// rectangles; a deck may slope along x (y0 at x0 to y1 at x1) to make a ramp or stair. Registered at
+// build time, before any object or person asks how high the ground is there.
+const DECKS = [];
+export function addDeck(d) { DECKS.push({ y1: d.y0, ...d }); }
+function deckY(x, z) {
+  let y = -Infinity;
+  for (const d of DECKS) {
+    if (x < d.x0 || x > d.x1 || z < d.z0 || z > d.z1) continue;
+    const t = d.x1 > d.x0 ? (x - d.x0) / (d.x1 - d.x0) : 0;
+    y = Math.max(y, d.y0 + (d.y1 - d.y0) * t);
+  }
+  return y;
+}
 export function groundAt(x, z) {
   const h = heightAt(x, z);
   const b = bridgeInfo(x, z);
-  return b.on ? Math.max(h, b.y) : h;
+  const g = b.on ? Math.max(h, b.y) : h;
+  return DECKS.length ? Math.max(g, deckY(x, z)) : g;
 }
 export function isWater(x, z) { return heightAt(x, z) < WATER_LEVEL - 0.25 && !bridgeInfo(x, z).on; }
 // which side of the river (sign)

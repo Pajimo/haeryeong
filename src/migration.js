@@ -32,7 +32,7 @@ export function createMigrationSystem(G) {
   function arrive() {
     // Newcomers stop at the same ceiling births respect, so immigration can no longer crowd out the
     // valley's own families — it used to be allowed up to 175 while conception stopped at 105.
-    const V = vacancies(); if (V.length < 2 || G.aliveCount > G.popCap * 0.97) return;
+    const V = vacancies(); if (V.length < 2 || G.residentCount > G.popCap * 0.97) return;
     const RP = sys('royalPower'); if (RP && RP.st.minsim < 30) return;
     if (sys('war')?.st?.war) return;
     const h = V.sort((a, b) => (a.tier === 'hut' ? 0 : a.tier === 'cottage' ? 1 : 2) - (b.tier === 'hut' ? 0 : b.tier === 'cottage' ? 1 : 2))[Math.floor(Math.random() * Math.min(3, V.length))];

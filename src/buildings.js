@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { rand, rr, pick, chance, mulberry32, lerp, distToPolyline } from './noise.js';
-import { heightAt, groundAt, roadDist, riverDist, WATER_LEVEL, LAYOUT, ROADS, RIVER, BRIDGE, slopeAt } from './terrain.js';
+import { heightAt, groundAt, roadDist, riverDist, WATER_LEVEL, LAYOUT, ROADS, RIVER, BRIDGE, slopeAt, addDeck } from './terrain.js';
 import * as TX from './textures.js';
 import { makeGuardianTree } from './vegetation.js';
 import { addSnow } from './season.js';
@@ -622,6 +622,10 @@ export function buildWorld(scene, quality) {
       obbs.push({ x: qx, z: qz - pd / 2, hw: pw / 2 + 0.8, hd: 0.5, rot: 0 });
       obbs.push({ x: qx, z: qz + pd / 2, hw: pw / 2 + 0.8, hd: 0.5, rot: 0 });
       obbs.push({ x: qx - pw / 2, z: qz, hw: 0.5, hd: pd / 2 + 0.8, rot: 0 });
+      // the east wall, with a gap where the stair-bridge crosses it (it had no collision at all, so
+      // anyone could stroll in and wade across the pond at ground level)
+      const gap = 1.7, eh = (pd / 2 + 0.8 - gap) / 2;
+      for (const sz of [-1, 1]) obbs.push({ x: qx + pw / 2, z: qz + sz * (gap + eh), hw: 0.5, hd: eh, rot: 0 });
       // lotus pads
       for (let i = 0; i < 26; i++) {
         const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * (pw / 2 - 3);
@@ -640,12 +644,34 @@ export function buildWorld(scene, quality) {
       const pr2 = roofGeometry({ w: fw + 1, d: fd + 1, o: 2.4, H: 3.1, lift: 1.25 });
       B.add('tile', pr2.geo, '#ffffff', mtx(qx, qy + fh + lip + 3.5, qz));
       B.add('vc', new THREE.BoxGeometry(pr2.rh * 2 + 0.7, 0.5, 0.8), C.ridge, mtx(qx, qy + fh + lip + 3.5 + 3.2, qz));
-      // the causeway from the palace wall
-      for (let i = 0; i < 4; i++) B.add('stone', new THREE.BoxGeometry(3.2, 0.3, 2.4), '#d2ccc0', mtx(qx + fw / 2 + 1.6 + i * 2.6, qy + lip + fh * 0.2 - i * 0.26, qz));
+      // The floor is a walkable deck, reached by a stone stair-bridge from the east bank. The old
+      // causeway climbed barely 1.5 m to a floor 4.4 m up, and the whole pavilion was a collision box —
+      // so the banquet seats were unreachable and guests walked at it for hours, starving.
+      const floorY = qy + fh + lip + 0.57;
+      addDeck({ x0: qx - fw / 2, x1: qx + fw / 2, z0: qz - fd / 2, z1: qz + fd / 2, y0: floorY });
+      const sx0 = qx + fw / 2, sx1 = qx + pw / 2 + 4.5, groundE = heightAt(sx1, qz);   // lands short of the palace wall at qx + 22
+      addDeck({ x0: sx0 - 0.05, x1: sx1, z0: qz - 1.5, z1: qz + 1.5, y0: floorY, y1: groundE });
+      const steps = 16;
+      for (let i = 0; i < steps; i++) {
+        const t = (i + 0.5) / steps, x = sx0 + (sx1 - sx0) * t, y = floorY + (groundE - floorY) * t;
+        const top = y + 0.1, bot = Math.min(heightAt(x, qz), qy + lip - 0.4);
+        B.add('stone', new THREE.BoxGeometry((sx1 - sx0) / steps + 0.05, Math.max(0.3, top - bot), 3.2), '#d2ccc0', mtx(x, (top + bot) / 2, qz));
+      }
+      for (const side of [-1, 1]) {   // low stone balustrades along the stair
+        const g = new THREE.BoxGeometry(Math.hypot(sx1 - sx0, floorY - groundE), 0.5, 0.18);
+        const m = mtx((sx0 + sx1) / 2, (floorY + groundE) / 2 + 0.55, qz + side * 1.62, 0, 0, Math.atan2(groundE - floorY, sx1 - sx0));
+        B.add('stone', g, '#e2ddd2', m);
+      }
+      // the water around the pavilion floor is not walkable (the deck's edges are its railings)
+      const wN = (pd / 2 - fd / 2) / 2;
+      for (const sz of [-1, 1]) obbs.push({ x: qx, z: qz + sz * (fd / 2 + wN), hw: pw / 2, hd: wN, rot: 0 });
+      const wW = (pw / 2 - fw / 2) / 2;
+      obbs.push({ x: qx - fw / 2 - wW, z: qz, hw: wW, hd: fd / 2, rot: 0 });
+      const ehd = (fd / 2 - 1.6) / 2;
+      for (const sz of [-1, 1]) obbs.push({ x: qx + fw / 2 + wW, z: qz + sz * (1.6 + ehd), hw: wW, hd: ehd, rot: 0 });
       addObj('banquet', qx, qz + fd / 2 - 1.5, 0, { cap: 10 });
       addObj('banquet', qx - 4, qz - fd / 2 + 1.5, Math.PI, { cap: 10 });
-      spots.banquetHall = [qx, qz + fd / 2 + 3];   // 'pavilion' is already taken by the village one
-      obbs.push({ x: qx, z: qz, hw: fw / 2, hd: fd / 2, rot: 0 });
+      spots.banquetHall = [sx1 + 1, qz];   // the foot of the stair ('pavilion' is the village one)
     }
 
     spots.council = [px, pz - 22];

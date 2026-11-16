@@ -509,6 +509,11 @@ export class Sim {
     if (a.type === 'use') {
       const o = a.obj; if (!o) return this.endAction();
       if (a.phase === 'move') {
+        // An unreachable seat (inside a wall, across water) used to be walked at forever — guests spent
+        // nine hours at the banquet door, starving. Give up once an hour passes without getting closer.
+        const dd = Math.hypot(this.pos.x - o.x, this.pos.z - o.z);
+        if (a._best == null || dd < a._best - 1.5) { a._best = dd; a._bestT = a.t; }
+        else if (a.t - a._bestT > 60 && !a.forced) { if (this.char.propName === 'lantern') this.char.setProp(null); return this.endAction(); }
         const run = a.run || a.work && this.late;
         if (this.G.env.isNight && !this.char.propMesh && this.id % 3 === 0 && this.age !== 'child' && !this.mount) this.char.setProp('lantern');
         this.curSpeed = run ? 4.2 : 1.45 * (this.age === 'elder' ? 0.8 : 1);

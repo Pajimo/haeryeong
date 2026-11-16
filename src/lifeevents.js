@@ -467,7 +467,7 @@ export function createLifeEventsSystem(G) {
           { label: 'Politely decline', fn: () => s.addMoodlet('le_free', 'Free to choose my own love', 4, 600) },
         ], s);
       } },
-    { k: 'foundling', hh: (s) => (s.home && !s.home.virtual && notChild(s) && HH().length < 8 && G.aliveCount < G.popCap ? 0.3 : 0), npc: (s) => (s.home && !s.home.virtual && s.spouse && G.aliveCount < G.popCap ? 0.2 : 0),
+    { k: 'foundling', hh: (s) => (s.home && !s.home.virtual && notChild(s) && HH().length < 8 && G.residentCount < G.popCap ? 0.3 : 0), npc: (s) => (s.home && !s.home.virtual && s.spouse && G.aliveCount < G.popCap ? 0.2 : 0),
       run(s, hh) {
         const sex = chance(0.5) ? 'm' : 'f';
         const adopt = () => { const h = s.home; const par = [s, s.spouse].filter(alive); const kid = G.spawn({ sex, age: 'child', job: 'child', home: h, surname: [s.name.surname, s.name.hangul[0]], household: !!s.household, x: h.door[0] + 0.6, z: h.door[1] + 0.6, parents: par, generation: (s.generation || 1) + 1, ageDays: 0, coins: 0 }); h.residents.push(kid); for (const p of par) { p.children.push(kid); p.getRel(kid).f = 70; kid.getRel(p).f = 70; p.getRel(kid).met = kid.getRel(p).met = true; } if (kid.household) { G.household.push(kid); G.ui?.refreshHousehold(); } return kid; };

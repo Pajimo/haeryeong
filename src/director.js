@@ -36,7 +36,7 @@ export class Director {
       this.familyT = 90;
       const couples = G.sims.filter((s) => s.sex === 'f' && !s.dead && s.spouse && !s.spouse.dead && !s.pregnant && ['young', 'adult'].includes(s.age) && s.spouse.age !== 'child' && (s.children?.length || 0) < 3 && !s.household);
       const press = G.popPressure;
-      if (G.aliveCount < G.popCap) for (const m of couples) if (chance(0.12 + press * 0.3)) G.tryForBaby(m.spouse, m);
+      if (G.residentCount < G.popCap) for (const m of couples) if (chance(0.12 + press * 0.3)) G.tryForBaby(m.spouse, m);
       // singles may find love. This used to consider only the five-day 'young' band, so anyone who
       // reached adulthood unmatched — and every widow, since a dead spouse still filled s.spouse —
       // stayed single for life; and it always paired a single with the first name in the list

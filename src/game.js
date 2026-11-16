@@ -26,6 +26,10 @@ export class Game {
   //   id, init(G), update(dt, gm), onEvent(name, payload), serialize(), restore(data),
   //   simMenuItems(me, other), objMenuItems(me, obj), animalMenuItems(me, animal), panelHtml(sim)
   get aliveCount() { let n = 0; for (const s of this.sims) if (!s.dead) n++; return n; }
+  // the people who actually live in the valley's houses: not bandits in the woods, not an invading
+  // army or envoys passing through, not departing families — an army at the gates must not make the
+  // village think it is full and stop marrying and having children
+  get residentCount() { let n = 0; for (const s of this.sims) if (!s.dead && !s.removed && !s._leaving && s.faction === 'village') n++; return n; }
   // How many souls the valley can feed, derived from the houses actually standing rather than a fixed
   // number. The old hard-coded birth gates (105 and 110) sat BELOW the starting population of ~125, so
   // they were false from the first frame and no villager could ever conceive — every child in the game
@@ -34,7 +38,7 @@ export class Game {
   // on this: with 24 of 40 houses standing empty the village should be making matches and taking in
   // families quickly, not dwindling. Without it the population spiralled from 141 to 65 over 18 days,
   // because people age from young to elder in about twelve days and marriages could not keep pace.
-  get popPressure() { const c = this.popCap; return Math.max(0, Math.min(1, (c - this.aliveCount) / c)); }
+  get popPressure() { const c = this.popCap; return Math.max(0, Math.min(1, (c - this.residentCount) / c)); }
   get popCap() {
     let homes = 0;
     for (const h of this.world?.houses || []) if (!h.virtual) homes += h.tier === 'mansion' ? 6 : h.tier === 'house' ? 5 : h.tier === 'cottage' ? 4 : 3;
@@ -206,7 +210,7 @@ export class Game {
           challenge: r.f < -40 && sp.fighter && li.fighter && (sp.has('Hot-headed') || sp.has('Brave') || sp.has('Ambitious')) && !this.raidActive ? 1.2 : 0,
           comfort: li.mood < -15 ? 2.2 : 0,
           propose: eligible && !sp.spouse && !li.spouse && r.r >= 75 && r.f >= 45 ? 4 : 0,
-          tryBaby: sp.spouse === li && r.r > 45 && ![sp, li].some((x) => x.pregnant || x.age === 'elder') && (sp.children?.length || 0) < 4 && !this.raidActive && this.aliveCount < this.popCap ? 1.2 : 0,
+          tryBaby: sp.spouse === li && r.r > 45 && ![sp, li].some((x) => x.pregnant || x.age === 'elder') && (sp.children?.length || 0) < 4 && !this.raidActive && this.residentCount < this.popCap ? 1.2 : 0,
         };
         kind = weightedPick(Object.keys(W), (k) => W[k]);
       }
