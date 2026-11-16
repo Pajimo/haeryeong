@@ -29,6 +29,8 @@ export const KINDS = {
   study: { label: 'Study Classics', ko: '공부', work: 'study', adv: { fun: 0.2, energy: -0.15, honor: 0.3 }, dur: [100, 160], anim: 'study', cap: 3, skill: 'scholarship' },
   serve: { label: 'Run the Jumak', ko: '주모', work: 'jumak', adv: { social: 0.6, energy: -0.2 }, dur: [120, 180], anim: 'talk', cap: 1, skill: 'charisma' },
   templeWork: { label: 'Temple Duties', ko: '수행', work: 'shrine', adv: { honor: 0.6, energy: -0.1 }, dur: [100, 160], anim: 'pray', cap: 2 },
+  rankstone: { label: 'Stand at your rank', ko: '품계석', adv: { honor: 0.5, energy: -0.1 }, dur: [40, 90], anim: 'bow', cap: 1, court: true },
+  petitiondrum: { label: 'Strike the petition drum', ko: '신문고', adv: { honor: 1.2, fun: 0.4 }, dur: [10, 18], anim: 'talk', cap: 1 },
   court: { label: 'Attend Court', ko: '조회', work: 'pavilion', adv: { honor: 0.8, energy: -0.15 }, dur: [100, 160], anim: 'court', cap: 8 },
   trainWork: { label: 'Drill', ko: '훈련', work: 'dummy', adv: { honor: 0.5, energy: -0.4, hunger: -0.2 }, dur: [80, 140], anim: 'train', cap: 1, skill: 'sword' },
   campWork: { label: 'Scheme', ko: '모의', work: 'camp', adv: { energy: -0.1 }, dur: [100, 160], anim: 'sit', cap: 8, camp: true },
@@ -560,6 +562,51 @@ export function buildWorld(scene, quality) {
     // side halls
     hanok(px - 34, pz - 4, Math.PI / 2, { w: 15, d: 7, style: 'giwa', lanterns: true });
     hanok(px + 34, pz - 4, -Math.PI / 2, { w: 15, d: 7, style: 'giwa', lanterns: true });
+    // ---- the inner court (내전): where the royal family actually lives ----
+    // Behind the throne hall, as at Gyeongbokgung: the council hall where the day's business is done,
+    // then the king's and queen's quarters, with the kitchen and the infirmary on the flanks.
+    hanok(px, pz - 27, 0, { w: 18, d: 9, h: 3.8, style: 'palace', plinth: 1.0, roofH: 3.0, over: 1.8, lanterns: true });        // 사정전, council
+    hanok(px - 21, pz - 31, 0, { w: 13, d: 8, h: 3.4, style: 'palace', plinth: 0.8, roofH: 2.7, over: 1.6 });                   // 강녕전, the king
+    hanok(px + 21, pz - 31, 0, { w: 13, d: 8, h: 3.4, style: 'palace', plinth: 0.8, roofH: 2.7, over: 1.6, lanterns: true });   // 교태전, the queen
+    hanok(px - 35, pz - 20, Math.PI / 2, { w: 10, d: 6, style: 'giwa' });                                                       // 수라간, royal kitchen
+    hanok(px + 35, pz - 20, -Math.PI / 2, { w: 10, d: 6, style: 'giwa' });                                                      // 내의원, royal infirmary
+    addObj('cookpot', px - 35, pz - 16, 0);
+    addObj('study', px + 35, pz - 16, 0);
+
+    // ---- 품계석: the rank stones ----
+    // Two files of them down the courtyard. At the morning assembly every official stands at the stone
+    // of his grade, the first grade nearest the throne — so the whole hierarchy is legible at a glance.
+    const stoneTop = pz - 6, stoneGap = 3.4;
+    for (let i = 0; i < 9; i++) {
+      const sz2 = stoneTop + 4 + i * stoneGap;
+      for (const sx of [-1, 1]) {
+        const sxp = px + sx * 5.5, sy = heightAt(sxp, sz2);
+        B.add('stone', new THREE.BoxGeometry(0.5, 0.95, 0.5), '#e6e2d8', mtx(sxp, sy + 0.47, sz2));
+        B.add('stone', new THREE.BoxGeometry(0.66, 0.12, 0.66), '#d8d2c6', mtx(sxp, sy + 0.99, sz2));
+        addObj('rankstone', sxp + sx * 1.5, sz2, sx > 0 ? -Math.PI / 2 : Math.PI / 2, { grade: 9 - i, side: sx });
+      }
+    }
+
+    // ---- 신문고: the petition drum at the gate ----
+    // Any commoner with a grievance the magistrates will not hear may strike it, and the court must
+    // listen. It is the one place in the palace an ordinary villager is allowed to stand.
+    {
+      const dx = px - 13, dz = gz - 5, dy = heightAt(dx, dz);
+      for (const sx of [-1, 1]) B.add('vc', new THREE.CylinderGeometry(0.16, 0.18, 2.6, 8), C.red, mtx(dx + sx * 1.0, dy + 1.3, dz));
+      B.add('vc', new THREE.BoxGeometry(2.6, 0.2, 0.3), C.red, mtx(dx, dy + 2.6, dz));
+      B.add('vc', new THREE.CylinderGeometry(0.72, 0.72, 0.95, 16), '#d9b06a', mtx(dx, dy + 1.65, dz, 0, Math.PI / 2));
+      B.add('vc', new THREE.CylinderGeometry(0.74, 0.74, 0.08, 16), '#8d2f24', mtx(dx + 0.52, dy + 1.65, dz, 0, Math.PI / 2));
+      B.add('vc', new THREE.CylinderGeometry(0.74, 0.74, 0.08, 16), '#8d2f24', mtx(dx - 0.52, dy + 1.65, dz, 0, Math.PI / 2));
+      obbs.push({ x: dx, z: dz, hw: 1.4, hd: 0.6, rot: 0 });
+      addObj('petitiondrum', dx, dz + 1.6, 0);
+      spots.petitionDrum = [dx, dz + 1.6];
+    }
+
+    spots.council = [px, pz - 22];
+    spots.kingQuarters = [px - 21, pz - 26];
+    spots.queenQuarters = [px + 21, pz - 26];
+    spots.courtyard = [px, pz + 8];
+
     for (const sx of [-1, 1]) for (const sz of [0, 1]) lanterns.push({ x: px + sx * 8, y: heightAt(px, pz) + 2.3, z: pz + 6 + sz * 14, post: true });
     spots.throne = hall.door;
     // throne dais with the Sun, Moon and Five Peaks screen (일월오봉도)

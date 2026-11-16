@@ -417,6 +417,41 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## The palace · 宮
+
+`src/palace.js`, with new grounds in `buildings.js`. The palace used to be a gate, a throne hall and two
+empty side buildings. The king sat on his throne, four guards stood at the gate, and nothing else about
+the place was alive — the grandest building in the valley had less going on inside it than a farmer's hut.
+
+**The inner court (내전)**, laid out as at Gyeongbokgung: behind the throne hall there is now a council
+hall where the day's business is done, the king's quarters and the queen's quarters flanking it, a royal
+kitchen on one side and an infirmary on the other.
+
+**품계석 — the rank stones.** Two files of them run down the courtyard from the gate to the throne hall.
+At the dawn assembly every official walks to the stone of his own grade, the first grade nearest the
+throne, so the whole hierarchy of the realm is legible at a glance from the steps.
+
+> 조회: 16 officials stand at their rank stones before the throne hall as the sun comes up.
+
+**The palace household.** Five **궁녀** court ladies who keep the inner court and attend the queen; an
+**어의** royal physician who crosses the grounds to treat any of the royal family who is hurt; and a
+**사관** court historian who follows the king about and writes down what he does. Ask the historian to
+let you read the record and he will show you a line of it — unless you are the King, in which case he
+bows low and refuses, exactly as his real counterparts did.
+
+**신문고 — the petition drum**, standing just inside the gate. It is the one place in the palace an
+ordinary villager may stand. Anyone ruined, robbed, hungry or wronged with no magistrate to hear them
+walks to the palace and strikes it, and the court must answer:
+
+> 🥁 Ahn Jin-ryong strikes the 신문고 at the palace gate. He says he was wronged and no magistrate would
+> hear it.
+> The petition of Han Mu-gwang was heard: Yi Hyun-gwang grants 38 nyang and orders the matter looked into.
+
+A gentle or pious king grants relief; a greedy one usually does not. Ignoring the drum costs the throne
+its standing, and the petitioner goes home with less honour than he came with — *"Nobody came. The drum
+is quiet again."* You can take a grievance there yourself, from your own menu, if you hold no rank.
+
+Measured over six days: 9 petitions heard, 1 left unanswered.
 ## Bug hunt
 
 A systematic sweep for silently-broken code — conditions that can never be true, properties read but
