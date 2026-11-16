@@ -392,7 +392,9 @@ export function createHousingSystem(G) {
         for (const pr of st.projects) for (const id of pr.workers) { const w = byId(id); if (w && pr.wagePool >= WAGE) { pr.wagePool -= WAGE; w.earn(WAGE); } }
         try { daily(); } catch (e) { console.error('[housing]', e); }
       }
-      if (name === 'death' && p?.sim) { const id = p.sim.id; if (st.land[id]) { const heir = (p.sim.children || []).find((c) => !c.dead) || alive(p.sim.home || { residents: [] }).find((r) => !r.serf && r !== p.sim); if (heir) st.land[heir.id] = (st.land[heir.id] || 0) + st.land[id]; delete st.land[id]; } }
+      // src/inheritance.js settles the whole estate together (land, roof, coins, stall) so that the
+      // land follows the same heir as everything else; this fallback only runs if that system is absent.
+      if (name === 'death' && p?.sim && !G.systems.some((x) => x.id === 'inheritance')) { const id = p.sim.id; if (st.land[id]) { const heir = (p.sim.children || []).find((c) => !c.dead) || alive(p.sim.home || { residents: [] }).find((r) => !r.serf && r !== p.sim); if (heir) st.land[heir.id] = (st.land[heir.id] || 0) + st.land[id]; delete st.land[id]; } }
     },
     simMenuItems(me, o) {
       if (!me.household) return [];

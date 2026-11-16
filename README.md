@@ -417,6 +417,42 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## What a life leaves behind
+
+`src/inheritance.js`. Death used to destroy property. When a villager died the only thing that happened
+was their name being struck from the house's resident list — their coins, the house they owned, their
+rice land, their market stall and their horse all simply ceased to exist. A great house's entire fortune
+evaporated the moment its head died, which meant the clan standing in `houses.js` could only ever be
+built up, never passed on, and no villager was ever made by an inheritance or ruined by missing one.
+
+An estate is now settled roughly as it was in later Joseon:
+
+1. **Debts first.** If the estate cannot cover them, the creditor takes the roof.
+2. **The widow is provided for** — 30% of the cash, before anything is divided.
+3. **The eldest son takes a double portion and the family roof**, because the ancestral rites fall to
+   him; the other sons take single portions and daughters a half portion. Verified: a 1,200 nyang estate
+   between two sons gives 800 and 400, with the house and all four parcels of land to the elder.
+4. **Failing children** it passes to the widow, then to brothers and sisters, then to the senior of the
+   surname.
+5. **Failing everyone**, the name dies out and the crown sells what is left.
+
+> The estate of Yu Hun-seok — 1634 nyang all told — passes to Yu Ye-sun.
+> Nam Ji-mu died with no one to inherit. The Nam name ends, and the crown will sell what is left.
+
+Brothers do not always take the division well: a large estate split between several sons can leave the
+younger ones convinced they were cheated, which costs the eldest dearly in the family. And coming into
+money is reason to want something new of life — an heir who inherits well drops their old ambition and
+picks another.
+
+Click anyone to see what they would leave and to whom.
+
+**A conflict worth recording:** `housing.js` already moved rice land on death, to `children[0]` — the
+*first* child, not the principal heir. With both systems running, the house went to the eldest son and
+the land to whichever child happened to be first in the array. Housing now defers to inheritance when it
+is present, so the whole estate passes together, and keeps its own fallback for when it is not.
+
+Measured over seven days of ordinary play: **18 estates settled, 5,920 nyang passed down, one name died
+out.**
 ## Houses — 가문
 
 `src/houses.js`. The valley had rivalry of two kinds and both were about the player: `rivals.js` gives
