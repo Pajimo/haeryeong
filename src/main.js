@@ -282,6 +282,12 @@ function begin() {
   audio.init(); audio.ctx?.resume();
   $('#title').classList.add('gone'); document.body.classList.add('started');
   started = true; G.started = true; G.lastSaveDay = G.env.day; perf?.begin();
+  // Set every character's detail level before the first frame is drawn. Without this the opening frame
+  // renders all ~130 villagers at full detail — 3,200 draw calls and 13M triangles against the 680 and
+  // 4M of a settled frame — which is a visible hitch at exactly the moment the player first looks at
+  // the valley.
+  { const QT = perf ? perf.t : { charDist: 170, charShadow: 45 };
+    for (const s of G.sims) { if (s.hidden) continue; const d = s.pos.distanceTo(camera.position); s.char.root.visible = d < QT.charDist; s.char.setLOD?.(d < 16 ? 0 : d < QT.charShadow ? 1 : 2); } }
   player.mode = 'overseer';
   const hero = G.household[0] || G.sims[0];
   G.select(hero);
