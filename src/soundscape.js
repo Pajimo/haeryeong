@@ -3,6 +3,9 @@
 import { riverDist } from './terrain.js';
 
 export function createSoundscapeSystem(G) {
+  // Web Audio throws on a non-finite value and the throw takes the whole soundscape down for the rest
+  // of the session (game.js logs it once and keeps calling update). Clamp every gain at the edge.
+  const fin = (v) => (Number.isFinite(v) ? Math.max(0, Math.min(4, v)) : 0);
   const A = () => G.audio;
   let beds = null, lastHour = -1, stepT = 0, sting = 0;
 
@@ -68,19 +71,20 @@ export function createSoundscapeSystem(G) {
     id: 'soundscape',
     update(dt) {
       const a = A(); if (!a?.ctx || a.ctx.state !== 'running') return;
+      if (!G.player?.focus || !Number.isFinite(G.player.focus.x) || !Number.isFinite(G.player.focus.z)) return;
       makeBeds(); if (!beds) return;
       const env = G.env, f = G.player.focus, t = a.ctx.currentTime;
       // river: louder the closer you stand; frozen rivers are silent
       const rd = riverDist(f.x, f.z), frozen = (G.seasons?.weights?.()?.[3] || 0) > 0.7;
       const rv = frozen ? 0 : Math.max(0, 1 - rd / 45) ** 1.6;
-      beds.river.g.gain.setTargetAtTime(rv * 0.16, t, 0.6); beds.river2.g.gain.setTargetAtTime(rv * 0.025, t, 0.6);
+      beds.river.g.gain.setTargetAtTime(fin(rv * 0.16), t, 0.6); beds.river2.g.gain.setTargetAtTime(fin(rv * 0.025), t, 0.6);
       // rain patter on tiles (snow is hushed)
       const rain = env.weather === 'snow' ? 0 : env.rain || 0;
-      beds.rain.g.gain.setTargetAtTime(rain * 0.045, t, 1.0);
+      beds.rain.g.gain.setTargetAtTime(fin(rain * 0.045), t, 1.0);
       // crowd murmur from nearby people talking or gathering
       let n = 0; for (const s of G.sims) if (!s.dead && !s.hidden && s.age !== 'child' && Math.abs(s.pos.x - f.x) < 20 && Math.abs(s.pos.z - f.z) < 20) n++;
       const cv = Math.min(1, Math.max(0, n - 3) / 14) * (env.nightBlend > 0.6 ? 0.4 : 1);
-      beds.crowd.g.gain.setTargetAtTime(cv * 0.05, t, 0.8); beds.crowdLfo.gain.setTargetAtTime(cv * 0.02, t, 0.8);
+      beds.crowd.g.gain.setTargetAtTime(fin(cv * 0.05), t, 0.8); beds.crowdLfo.gain.setTargetAtTime(fin(cv * 0.02), t, 0.8);
       // temple bell at 06:00 and 18:00, rooster at 05:00
       const hr = Math.floor(env.hour);
       if (hr !== lastHour) {

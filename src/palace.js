@@ -41,12 +41,12 @@ export function createPalaceSystem(G) {
     for (let i = 0; i < 5; i++) {
       const g = mk({ sex: 'f', age: chance(0.3) ? 'adult' : 'young', job: 'servant', outfit: 'commoner' });
       g.palace = { role: 'lady' }; g.serf = null; g.missionLock = false;
-      g.name.given = g.name.given; g.courtLady = true;
+      g.titleOverride = 'Court Lady'; g.courtLady = true;
     }
     const doc = mk({ sex: chance(0.5) ? 'f' : 'm', age: 'adult', job: 'scholar' });
-    doc.palace = { role: 'physician' }; doc.skills.scholarship = Math.max(doc.skills.scholarship, 6);
+    doc.palace = { role: 'physician' }; doc.titleOverride = 'Royal Physician'; doc.skills.scholarship = Math.max(doc.skills.scholarship, 6);
     const hist = mk({ sex: 'm', age: 'adult', job: 'scholar' });
-    hist.palace = { role: 'historian' }; hist.skills.scholarship = Math.max(hist.skills.scholarship, 7);
+    hist.palace = { role: 'historian' }; hist.titleOverride = 'Court Historian'; hist.skills.scholarship = Math.max(hist.skills.scholarship, 7);
     log('The inner court is kept by its own household: court ladies, a royal physician, and a historian who writes down everything the King does.', 'story', { x: px, z: pz });
   }
   const staffOf = (role) => G.sims.filter((s) => live(s) && s.palace?.role === role);
@@ -331,8 +331,21 @@ export function createPalaceSystem(G) {
         st.heard + st.ignored ? `${st.heard} petitions heard, ${st.ignored} left unanswered at the gate.` : ''].filter(Boolean);
     },
 
-    serialize() { return { ...st, petitions: st.petitions }; },
-    restore(d) { if (d) Object.assign(st, d); },
+    // The sim serializer does not carry `palace` or `titleOverride`, and staff() will not re-run once
+    // st.staffed is true — so without this the whole palace household came back from a save as
+    // ordinary bondservants with no role, no title and nothing to do.
+    serialize() {
+      return { ...st, petitions: st.petitions,
+        household: G.sims.filter((s) => live(s) && s.palace?.role).map((s) => [s.id, s.palace.role, s.titleOverride || '']) };
+    },
+    restore(d, get) {
+      if (!d) return;
+      const { household, ...rest } = d; Object.assign(st, rest);
+      for (const [id, role, title] of household || []) {
+        const s = get?.(+id) || G.sims.find((x) => x.id === +id);
+        if (s) { s.palace = { role }; if (title) s.titleOverride = title; s.serf = null; }
+      }
+    },
   };
   return S;
 }

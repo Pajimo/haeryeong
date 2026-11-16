@@ -192,7 +192,9 @@ export class Sim {
   get fighter() { return this.age !== 'child' && (!!JOBS[this.job].fighter || this.armed); }
   earn(n) { this.coins += n; if (n > 0) this.G.factions?.notify(this, { type: 'coins', amount: n }); }
   has(t) { return this.traits.includes(t); }
-  get title() { return JOBS[this.job].title; }
+  // A post can outrank a trade: the palace's court ladies, physician and historian are spawned on
+  // ordinary jobs but are none of those things, and reading "Bondservant" over a 궁녀 is simply wrong.
+  get title() { return this.titleOverride || JOBS[this.job].title; }
   get mood() {
     let s = 0, w = 0;
     for (const n of NEEDS) { const v = this.needs[n.key]; const wt = v < 25 ? 2.2 : 1; s += v * wt; w += wt; }

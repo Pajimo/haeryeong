@@ -224,7 +224,10 @@ export function createAmbitionSystem(G) {
     },
     {
       id: 'freedom', name: 'Buy my freedom', ko: '속량', icon: '⛓', dramatic: true,
-      want: (s) => (s.job === 'servant' || s.serf ? 4 : 0),
+      // Bondage is the `serf` record, not the job name. The palace's court ladies are spawned with
+      // job 'servant' and no master, so they were forming a burning ambition to buy their freedom from
+      // nobody — and on reaching 150 nyang would have paid it to no one and walked off to be farmers.
+      want: (s) => (s.serf ? 4 : 0),
       cost: () => 150,
       pursue: (s) => work(s),
       ready: (s) => s.coins >= 150,
