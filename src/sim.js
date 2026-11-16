@@ -466,7 +466,7 @@ export class Sim {
       this._lockIdle = (this._lockIdle || 0) + gm;
       if (this._lockIdle > 180) { this.missionLock = false; this._lockIdle = 0; this.G._lockLeaks = (this.G._lockLeaks || 0) + 1; }
     } else this._lockIdle = 0;
-    if (this.dead) { this.deadT = (this.deadT || 0) + gm; this.char.setAnim('dead', 5); this.char.update(dt, 0); this.syncTransform(); return; }
+    if (this.dead) { this.deadT = (this.deadT || 0) + gm; this.char.setAnim('dead', 5); this.animate(dt, 0); this.syncTransform(); return; }
     // needs
     const decay = { hunger: 0.095, energy: 0.065, social: 0.075, fun: 0.08, hygiene: 0.045, honor: 0.025 };
     if (this.G.env.season === 'winter') { decay.hunger *= 1.15; decay.energy *= 1.12; } else if (this.G.env.season === 'summer') decay.hygiene *= 1.25;
@@ -512,8 +512,16 @@ export class Sim {
     this.pos.y = Math.max(this.pos.y, WATER_LEVEL - 0.9);
     if (this.mount) this.pos.y = groundAt(this.pos.x, this.pos.z) + 1.36;
     this.updateGaze(dt);
-    this.char.update(dt, this.moving ? this.curSpeed || 1.4 : 0);
+    this.animate(dt, this.moving ? this.curSpeed || 1.4 : 0);
     this.syncTransform();
+  }
+  // Skeletal animation is the single largest per-person cost, and most of the valley is off screen at
+  // any moment (26 of 191 visible in one measurement). Off-screen people bank their time and animate
+  // four times a second instead of every step; they catch up the moment they come into view.
+  animate(dt, speed) {
+    if (this.char.root.visible) { this.char.update(dt + (this._animAcc || 0), speed); this._animAcc = 0; return; }
+    this._animAcc = (this._animAcc || 0) + dt;
+    if (this._animAcc >= 0.25) { this.char.update(this._animAcc, speed); this._animAcc = 0; }
   }
 
   // where the eyes go: conversation partners, opponents, people speaking nearby, and the player passing by
