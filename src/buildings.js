@@ -21,6 +21,10 @@ export const KINDS = {
   pavilion: { label: 'Recite Poetry', ko: '시', adv: { fun: 1.4, social: 0.4, honor: 0.3 }, dur: [30, 60], anim: 'sit', cap: 5 },
   shop: { label: 'Browse Market', ko: '장터', adv: { fun: 1.0, social: 0.6, hunger: 0.6 }, dur: [15, 30], anim: 'talk', cap: 2, cost: 4 },
   campfire: { label: 'Sit by Fire', ko: '모닥불', adv: { social: 1.0, fun: 0.8, hunger: 1.2 }, dur: [30, 60], anim: 'sit', cap: 8, camp: true },
+  // somewhere to sleep for those with no bed of their own: the tavern let rooms (객방) for a few coins,
+  // and anyone with nothing could lie down under a pavilion roof or on the temple's veranda
+  lodging: { label: 'Lodge at the Jumak', ko: '객방', adv: { energy: 1.0, hygiene: 0.1 }, dur: [300, 420], anim: 'sleep', hidden: true, cap: 8, cost: 3, available: (s) => !s.home },
+  rough: { label: 'Sleep Rough', ko: '노숙', adv: { energy: 0.7 }, dur: [240, 360], anim: 'sleep', cap: 6, available: (s) => !s.home },
   tent: { label: 'Sleep in Tent', ko: '천막', adv: { energy: 1.0 }, dur: [300, 420], anim: 'sleep', hidden: true, cap: 3, camp: true },
   // work spots
   field: { label: 'Tend Paddies', ko: '농사', work: 'field', adv: { energy: -0.25, hygiene: -0.4 }, dur: [90, 150], anim: 'farm', cap: 1, skill: 'farming' },
@@ -399,6 +403,7 @@ export function buildWorld(scene, quality) {
     }
     circles.push({ x: px, z: pz, r: 1.6 });
     addObj('platform', px - Math.cos(a) * 2.2, pz - Math.sin(a) * 2.2, Math.atan2(Math.cos(a), Math.sin(a)), { seat: [px, pz], seatY: y + 0.62 });
+    if (i === 0) addObj('rough', px * 0.75, pz * 0.75, -a);   // under the plaza platform's eaves
   }
   // wells
   for (const [wx, wz] of [[15, -13], [-38, 52], [38, 58], [-46, -52], [62, -20]]) {
@@ -426,6 +431,7 @@ export function buildWorld(scene, quality) {
       B.add('glaze', onggiGeo(0.35), '#e6dccb', mtx(px, y + 0.56, pz));
       circles.push({ x: px, z: pz, r: 1.5 });
       for (let k = 0; k < 3; k++) addObj('jumak', px + 2.0, pz + (k - 1) * 0.9, -Math.PI / 2, { seatY: y + 0.6, seat: [px + 0.9, pz + (k - 1) * 0.9] });
+      addObj('lodging', px + 3.2, pz + 2.6, -Math.PI / 2);
     }
     const sp = hk.world(-4.5, 4.3);
     addObj('serve', sp[0], sp[1], -Math.PI / 2);
@@ -734,6 +740,7 @@ export function buildWorld(scene, quality) {
     const [tx, tz] = LAYOUT.temple; spots.temple = [tx - 6, tz];
     const hk = hanok(tx + 8, tz - 4, -Math.PI / 2, { w: 14, d: 9, h: 3.4, style: 'temple', lanterns: true, lanternColor: '#d9a520' });
     for (let k = 0; k < 4; k++) { const p = hk.world(-4.5 + k * 3, 8.5); addObj('shrine', p[0], p[1], Math.PI / 2 * 1 - Math.PI, { look: [tx + 8, tz - 4] }); }
+    { const p = hk.world(6, 10.5); addObj('rough', p[0], p[1], 0, { title: 'The temple veranda' }); }   // the monks turn no one away
     const p2 = hk.world(-3, 7); addObj('templeWork', p2[0], p2[1], Math.PI / 2); const p3 = hk.world(3, 7); addObj('templeWork', p3[0], p3[1], Math.PI / 2);
     // stone pagoda
     const sx = tx - 6, sz = tz - 14, sy = heightAt(sx, sz);

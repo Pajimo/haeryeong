@@ -48,7 +48,9 @@ export function createPalaceSystem(G) {
     log('The inner court is kept by its own household: court ladies, a royal physician, and a historian who writes down everything the King does.', 'story', { x: px, z: pz });
   }
   const staffOf = (role) => G.sims.filter((s) => live(s) && s.palace?.role === role);
-  const mkPalace = (o) => { const [px, pz] = spot('palace') || [0, -120]; return G.spawn({ x: px + (Math.random() - 0.5) * 16, z: pz - 20 + (Math.random() - 0.5) * 10, ...o }); };
+  const mkPalace = (o) => { const [px, pz] = spot('palace') || [0, -120]; return G.spawn({ x: px + (Math.random() - 0.5) * 16, z: pz - 20 + (Math.random() - 0.5) * 10, home: G.vhouses?.court, ...o }); };
+  // the household was spawned with no home at all, so none of them could ever go to bed
+  const quarter = (s) => { const c = G.vhouses?.court; if (c && !s.home) { s.home = c; if (!c.residents.includes(s)) c.residents.push(s); } };
 
   // ---------------- 궁녀: ranks, royal favour and retirement ----------------
   // Palace women could not marry: they were nominally the King's for life. They rose instead — from
@@ -65,6 +67,7 @@ export function createPalaceSystem(G) {
   }
   function retire(l) {
     l.palace = null; l.titleOverride = null; l.courtLady = false; l.job = 'farmer'; l.coins += 120;
+    if (l.home === G.vhouses?.court) { l.home.residents = l.home.residents.filter((x) => x !== l); l.home = null; }
     l.addMoodlet('released', 'Released from palace service', 10, 2880); l.rebuildModel?.();
     log(`After a lifetime in the inner court, ${l.name.full} is released from service with a small pension and goes to live out her years in the village.`, 'story', l.pos);
   }
@@ -379,7 +382,7 @@ export function createPalaceSystem(G) {
 
     onEvent(name, p) {
       try {
-        if (name === 'ready') staff();
+        if (name === 'ready') { staff(); for (const s of G.sims) if (live(s) && s.palace?.role) quarter(s); }
         if (name === 'death' && p?.sim?.job === 'king' && !p.sim.missionSpawn) mourningBegin(p.sim);
         if (name === 'crowned' && p?.sim) coronation(p.sim);
         if (name === 'day') {
@@ -439,7 +442,7 @@ export function createPalaceSystem(G) {
       const { household, ...rest } = d; Object.assign(st, rest); G.royalMourning = !!st.mourning;
       for (const [id, role, title, rank, since] of household || []) {
         const s = get?.(+id) || G.sims.find((x) => x.id === +id);
-        if (s) { s.palace = { role, rank: rank || (role === 'lady' ? 'nain' : role === 'consort' ? 'consort' : undefined), since: since ?? G.env.day }; if (title) s.titleOverride = title; s.serf = null; if (role === 'lady') s.courtLady = true; }
+        if (s) { quarter(s); s.palace = { role, rank: rank || (role === 'lady' ? 'nain' : role === 'consort' ? 'consort' : undefined), since: since ?? G.env.day }; if (title) s.titleOverride = title; s.serf = null; if (role === 'lady') s.courtLady = true; }
       }
     },
   };

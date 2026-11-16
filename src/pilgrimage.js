@@ -82,7 +82,11 @@ export function createPilgrimageSystem(G) {
       if (P.k.dead) { G.log('The procession breaks apart in panic — the King has fallen on the mountain road!', 'danger'); return end(false); }
       const [tx, tz] = LAYOUT.temple; const [px, pz] = LAYOUT.palace;
       if (P.phase === 'out') { const near = Math.hypot(P.k.pos.x - tx, P.k.pos.z - tz) < 110 && Math.hypot(P.k.pos.x - tx, P.k.pos.z - tz) > 50; if (near) maybeAmbush(); if (march(P.at, dt) || P.t > 360) { P.phase = 'pray'; P.t = 0; pray(); } }
-      else if (P.phase === 'pray') { if (P.t > 90) { P.phase = 'home'; P.t = 0; } }
+      else if (P.phase === 'pray') {
+        // the monks feed the procession and let it rest before the long road home
+        if (!P.fed) { P.fed = true; for (const s of P.all) if (!s.dead) { s.needs.hunger = Math.max(s.needs.hunger, 75); s.needs.energy = Math.max(s.needs.energy, 55); } }
+        if (P.t > 90) { P.phase = 'home'; P.t = 0; }
+      }
       else if (P.phase === 'home') { if (march([px + 22, pz - 12], dt) || P.t > 400) end(true); }
     },
     serialize() { return null; },

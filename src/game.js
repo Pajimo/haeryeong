@@ -99,7 +99,10 @@ export class Game {
 
   setupHouses() {
     this.vhouses = {
-      barracks: this.virtualHouse('barracks', [LAYOUT.palace[0] - 28, LAYOUT.palace[1] - 4], 14),
+      // (14 beds for a garrison that outgrew it: the overflow had nowhere to sleep at all)
+      barracks: this.virtualHouse('barracks', [LAYOUT.palace[0] - 28, LAYOUT.palace[1] - 4], 30),
+      // the palace household's own quarters — court ladies, physician, historian
+      court: this.virtualHouse('court', [LAYOUT.palace[0] + 12, LAYOUT.palace[1] - 26], 12),
       temple: this.virtualHouse('temple', [LAYOUT.temple[0] + 2, LAYOUT.temple[1] + 6], 4),
       royal: this.virtualHouse('royal', [LAYOUT.palace[0] + 22, LAYOUT.palace[1] - 18], 8),
       police: this.virtualHouse('police', [this.world.spots.police[0] + 3, this.world.spots.police[1] - 3], 8),

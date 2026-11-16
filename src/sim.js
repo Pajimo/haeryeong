@@ -336,10 +336,15 @@ export class Sim {
       if (k === 'jumak' && !this.has('Cheerful') && this.job !== 'swordsman') s *= 0.75;
       if (this.has('Lazy') && (k === 'platform' || k === 'bed')) s *= 1.3;
       if (d.cost && this.has('Greedy')) s *= 0.5;
-      if ((k === 'bed' || k === 'tent') && night) s *= 2.2;
-      if ((k === 'bed' || k === 'tent') && !night && this.needs.energy > 35) s *= 0.15;
+      const sleepy = d.anim === 'sleep';   // bed, tent, tavern lodging, a pavilion floor
+      if (sleepy && night) s *= 2.2;
+      if (sleepy && !night && this.needs.energy > 35) s *= 0.15;
+      // desperate needs outrank distance: someone dead on their feet goes to bed rather than washing at
+      // the nearest well, and someone famished walks to a meal rather than chatting on the way
+      const desperate = (sleepy && this.needs.energy < 15) || ((d.adv.hunger || 0) > 0.5 && this.needs.hunger < 15);
+      if (desperate) s *= 2.5;
       const dist = Math.hypot(o.x - this.pos.x, o.z - this.pos.z);
-      s /= 1 + dist / 70;
+      s /= 1 + dist / (desperate ? 200 : 70);
       cands.push({ s, a: { type: 'use', obj: o, label: d.label } });
     }
     // work
@@ -445,6 +450,12 @@ export class Sim {
       if (this.combat?.target && !Number.isFinite(this.combat.target.pos.x)) this.endFight?.();
       if (!this._nanWarned) { this._nanWarned = true; console.warn('[sim] non-finite position repaired', this.name?.full, this.action?.type, this.action?.label); }
     } else (this._safe ||= [0, 0, 0], this._safe[0] = P.x, this._safe[1] = P.z, this._safe[2] = P.y);
+    // watchdog: some event locked this person for itself and then left them with nothing to do (or never
+    // let go). Three idle game hours under a lock and the lock is released, whoever took it.
+    if (this.missionLock && !this.action && !this.hidden && !this.away && !this.jailed && !this.controlled && !this.dead) {
+      this._lockIdle = (this._lockIdle || 0) + gm;
+      if (this._lockIdle > 180) { this.missionLock = false; this._lockIdle = 0; this.G._lockLeaks = (this.G._lockLeaks || 0) + 1; }
+    } else this._lockIdle = 0;
     if (this.dead) { this.deadT = (this.deadT || 0) + gm; this.char.setAnim('dead', 5); this.char.update(dt, 0); this.syncTransform(); return; }
     // needs
     const decay = { hunger: 0.095, energy: 0.065, social: 0.075, fun: 0.08, hygiene: 0.045, honor: 0.025 };
@@ -546,6 +557,7 @@ export class Sim {
           a.phase = 'do'; a.t = 0; a.dur = rr(o.def.dur[0], o.def.dur[1]);
           if (o.seat) { this.pos.x = o.seat[0]; this.pos.z = o.seat[1]; a.seatY = o.seatY; }
           if (o.def.hidden) this.setHidden(true);
+          if (o.kind === 'rough') this.addMoodlet('rough', 'Slept rough, without a roof', -6, 720);
           const anim = o.def.anim;
           if (anim === 'eat') this.char.setProp(o.kind === 'jumak' && chance(0.5) ? 'cup' : 'bowl');
           if (anim === 'study') this.char.setProp('book');
