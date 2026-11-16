@@ -417,6 +417,26 @@ innkeeper grandmother takes the ginseng run; the swordsman takes the bounty.
 
 It is gated entirely on the **Free will** switch in that person's panel — turn it off and nobody acts
 without you. Only one mission runs at a time, as before, so this can never take one you wanted.
+## The court governs itself
+
+`politics.js` had a complete court: an agenda of real questions (a war levy, the grain tax, a new
+Confucian academy, watchtowers, an inquiry into a corrupt Chief State Councillor), two cliques with
+shifting strength, the King's own leaning, and an `effect` on every item that actually changes the
+world. All of it resolved **only inside the player's court-session modal.** A player who never walked
+into the throne hall left the kingdom in permanent suspension — the grain tax never moved, no academy
+was ever built, no corrupt minister was ever investigated.
+
+The chamber now sits on its own. Each minister of the second rank or above takes a stance from his
+clique, his temper and whether he defers to the throne — the loyal and the pious read the King's mood,
+the hot-headed and the ambitious vote their own way — and the measure passes or fails on the weighted
+tally, with the effect applied either way.
+
+> 조정: "Scholars petition to open a new Confucian academy (서원) at the crown's expense." — the court
+> assents. Shin Mu-san spoke against it; Song Ji-tae spoke for it.
+> 조정: "The granaries are full. Should the crown lower the grain tax this season?" — the court refuses.
+
+Attending court yourself still matters: your voice is weighed into the same tally alongside theirs,
+rather than being the only voice in the room.
 ## The palace · 宮
 
 `src/palace.js`, with new grounds in `buildings.js`. The palace used to be a gate, a throne hall and two

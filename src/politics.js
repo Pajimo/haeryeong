@@ -189,6 +189,46 @@ export function createPoliticsSystem(G) {
         if (!strong) for (const s of G.household) if (s.factions?.court?.rank >= 3) { s.factions.court.rank--; G.log(`A purge (사화) sweeps the court! The ${CLIQUES[mine].name} fall from favour, and ${s.name.full} is demoted.`, 'danger'); G.ui.toast('⚠ Purge at court — you were demoted.', 'danger'); }
       }
       for (const s of G.household) if (s.factions?.court) this.tryPromote(s);
+      this.sitInCouncil();
+    },
+
+    // The realm governs itself. The agenda, the clique weights and the effects all existed, but they
+    // were only ever resolved inside the player's court-session modal — so a player who never attended
+    // court left the kingdom in permanent suspension: the granaries were never taxed, no academy was
+    // ever built, no corrupt Chief State Councillor was ever investigated. The chamber now sits on its
+    // own, and the player's voice sways a session they attend rather than being the only voice in it.
+    sitInCouncil() {
+      const k = G.king; if (!k || k.dead) return;
+      if (this.st.lastCouncil === day()) return;
+      if (Math.random() < 0.45) return;                      // the court does not sit every single day
+      this.st.lastCouncil = day();
+      const items = this.agenda(); if (!items.length) return;
+      // the ministers who are actually in a position to speak
+      const bench = G.sims.filter((s) => !s.dead && !s.hidden && s.factions?.court && (s.factions.court.rank || 0) >= 2
+        && !['king', 'queen', 'prince', 'princess'].includes(s.job));
+      const spoke = [];
+      for (const it of items) {
+        if (!it.effect) continue;
+        // each minister's stance: his clique, his temper, and whether he reads the King's mood
+        let yes = (it.king === 'support' ? 2 : it.king === 'oppose' ? -2 : 0);
+        for (const m of bench) {
+          const side = m.factions.court.side || (m.id % 2 ? 'east' : 'west');
+          const lean = it[side] === 'support' ? 1 : it[side] === 'oppose' ? -1 : 0;
+          const courtly = m.has?.('Loyal') || m.has?.('Pious') ? 0.6 : 0;   // defer to the throne
+          const wilful = m.has?.('Hot-headed') || m.has?.('Ambitious') ? 0.5 : 0;
+          const kingPull = (it.king === 'support' ? 1 : it.king === 'oppose' ? -1 : 0) * courtly;
+          const v = lean * (1 + wilful) + kingPull;
+          yes += v * (0.5 + (m.factions.court.rank || 0) * 0.12);
+          if (spoke.length < 2 && Math.abs(v) > 0.9 && Math.random() < 0.4) {
+            spoke.push(`${m.name.full} spoke ${v > 0 ? 'for' : 'against'} it`);
+          }
+        }
+        const passed = yes > 0;
+        try { (passed ? it.effect.support : it.effect.oppose)?.(); } catch (e) { console.error('[politics] effect', e); }
+        G.log(`조정: "${it.q}" — the court ${passed ? 'assents' : 'refuses'}${spoke.length ? `. ${spoke.join('; ')}` : ''}.`, 'decree', G.world?.spots?.courtyard);
+        spoke.length = 0;
+      }
+      this.st.meetings++;
     },
     simMenuItems(me, o) {
       if (!me.household) return [];
