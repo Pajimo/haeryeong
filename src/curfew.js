@@ -20,12 +20,13 @@ export function createCurfewSystem(G) {
   }
   function close() {
     st.night = true; G.curfew = true;
-    G.log('🔔 인정 — the great bell is struck twenty-eight times. The gates are shut; the night watch takes up its lanterns.', 'info');
+    // the bell is heard every night; the chronicle only needs to say so once
+    if (!st.logged) G.log('🔔 인정 — the great bell is struck twenty-eight times. The gates are shut; the night watch takes up its lanterns.', 'info');
     toll(4);
   }
   function open() {
     st.night = false; G.curfew = false;
-    G.log('🔔 파루 — thirty-three strokes before dawn. The gates open, and the first kitchen smoke rises over the roofs.', 'info');
+    if (!st.logged) { st.logged = true; G.log('🔔 파루 — thirty-three strokes before dawn. The gates open, and the first kitchen smoke rises over the roofs.', 'info'); }
     toll(4);
   }
 
@@ -76,8 +77,8 @@ export function createCurfewSystem(G) {
       }
     },
     status() { return [st.night ? '🔔 Curfew: the gates are shut until the 파루 bell before dawn.' : '']; },
-    serialize() { return { fined: st.fined }; },
-    restore(d) { if (d) st.fined = d.fined ?? -1; },
+    serialize() { return { fined: st.fined, logged: !!st.logged }; },
+    restore(d) { if (d) { st.fined = d.fined ?? -1; st.logged = !!d.logged; } },
   };
   return S;
 }

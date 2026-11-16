@@ -269,6 +269,7 @@ export function createMissionsSystem(G) {
     },
     finish(ok, reason) {
       const M = this.active; if (!M) return;
+      const wasAuto = !!M.autoLock || (M.actor && !M.actor.controlled && M.actor.freeWill);
       this.releaseAuto(M);
       this.active = null; if (M.actor) M.actor.missionHero = false; this.beacon.visible = false; this.hud.classList.add('hidden'); G.env.spiritWindTarget = null;
       // Swallowing this silently is dangerous: stage end handlers are what clear missionLock on
@@ -284,6 +285,13 @@ export function createMissionsSystem(G) {
         x.startAction({ type: 'goto', dest, run: x.faction === 'bandit', label: 'Leaving', then: (z) => { if (z.faction === 'bandit') { z.missionLock = false; return; } z.dispose(); z.removed = true; } });
       } }
       const s = M.actor; const m = M.def;
+      // a task they took on themselves and lost: get clear of whoever beat them and go home to mend —
+      // one swordsman lingered near the assassins of a failed escort and was cut down two hours later
+      if (!ok && wasAuto && s && !s.dead && !s.jailed && !s.controlled) {
+        s.endFight?.(); const door = s.home?.door || [0, 0];
+        s.startAction({ type: 'goto', dest: [door[0] + 1, door[1] + 1], run: true, label: 'Going home after a hard day' });
+        this.cooldown = this.cooldown || {}; this.cooldown[s.id] = G.env.day + 1;
+      }
       if (ok) {
         const pay = Math.round(m.pay * (1 + fameLevel(this.famePts(s, m.path)) * 0.15));
         s.earn(pay); s.needs.honor = Math.min(100, s.needs.honor + (m.dark ? 0 : 12)); this.addFame(s, m.path, m.fame);
@@ -346,6 +354,8 @@ export function createMissionsSystem(G) {
       const cat = catalogue(G);
       for (const s of G.household) {
         if (s.dead || !s.freeWill || s.controlled || s.hidden || s.age === 'child' || s.missionLock) continue;
+        if (s.hp < s.maxHp * 0.75) continue;                                   // hurt: mend first
+        if (this.cooldown?.[s.id] != null && G.env.day <= this.cooldown[s.id]) continue;   // a day's rest after a failure
         const leaning = this.leaning(s);
         for (const offer of this.offers) {
           const m = cat.find((x) => x.id === offer.id); if (!m) continue;
@@ -379,14 +389,21 @@ export function createMissionsSystem(G) {
       }
       // already fighting (an actual fight — a stale combat target left behind after a beast ran off
       // used to make the autopilot stand aside forever)
-      if (s.action?.type === 'fight' && s.combat?.target && !s.combat.target.dead) return;
+      const isEnemy = (o) => !!o && (o.missionSpawn || o.faction === 'bandit' || o.faction === 'enemy' || !!o.type);   // .type: a beast
+      const cur = s.action?.type === 'fight' ? s.combat?.target : null;
+      if (cur && !cur.dead && isEnemy(cur)) return;
+      // a side-quarrel (a villager's brawl) is dropped: the mission comes first — one bodyguard chased a
+      // brawler 600 m across the valley while assassins cut down the minister
+      if (cur && !cur.dead && !isEnemy(cur)) { s.endFight?.(); s.cancelAction?.(); }
       // anyone attacking them gets an answer
       // anyone attacking them — or attacking whoever the mission put in their care (the minister, the
       // girl, the twins, grandmother) — gets an answer
       const ward = new Set(Object.values(M.v).flat().filter((x) => x && x.pos && x.name && !x.dead && x.faction === 'village'));
       if (M.giver) ward.add(M.giver);
-      const foe = G.sims.find((o) => !o.dead && o.combat?.target && (o.combat.target === s || ward.has(o.combat.target)) && o.pos.distanceTo(s.pos) < 18);
-      if (foe && (s.fighter || s.armed)) { s.startFight(foe, !!foe.missionSpawn && /subdue|arrest/i.test(M.stage.text)); return; }
+      // Only real enemies (mission foes, bandits, an enemy army) are fought; a villager's brawl is not the
+      // mission's business — answering one with steel once made a sibling a murderer on a boar hunt
+      const foe = G.sims.find((o) => !o.dead && isEnemy(o) && o.combat?.target && (o.combat.target === s || ward.has(o.combat.target)) && o.pos.distanceTo(s.pos) < 18);
+      if (foe && (s.fighter || s.armed)) { s.startFight(foe, !!foe.combat?.nonlethal || /subdue|arrest/i.test(M.stage.text)); return; }
       const w = M.stage.where?.(M);
       if (!w) { this.releaseAuto(M); return; }                           // waiting stages: live normally meanwhile
       s.missionLock = true; M.autoLock = true;
@@ -399,8 +416,10 @@ export function createMissionsSystem(G) {
         // step, and nobody ever walked anywhere); the objective itself is walked to below
         const close = (p) => Math.hypot(p.x - s.pos.x, p.z - s.pos.z) < 14;
         const atObj = (p) => Math.hypot(p.x - w[0], p.z - w[1]) < 3;   // the mission's own quarry first
-        const sims = G.sims.filter((o) => !o.dead && !o.household && o !== s && (o.missionSpawn || o.faction === 'bandit' || o.outlaw) && close(o.pos));
-        const beasts = (G.animals?.list || []).filter((a2) => !a2.dead && close(a2.pos) && ['boar', 'tiger', 'wolf', 'bear'].includes(a2.type));
+        // only the mission's own quarry: whoever stands at the objective, or people the mission itself
+        // brought into the world — never an ordinary villager who happens to be nearby
+        const sims = G.sims.filter((o) => !o.dead && !o.household && o !== s && close(o.pos) && (o.missionSpawn || atObj(o.pos)));
+        const beasts = (G.animals?.list || []).filter((a2) => !a2.dead && close(a2.pos) && ['boar', 'tiger', 'wolf', 'bear'].includes(a2.type) && !a2.ownerId);
         const t = [...sims, ...beasts].find((x) => atObj(x.pos)) || sims[0] || beasts[0];
         if (t) { s.startFight(t, gentle); if (gentle) s.arresting = t; return; }
       }

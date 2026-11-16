@@ -76,6 +76,7 @@ import { createInheritanceSystem } from './inheritance.js';
 import { createHarvestSystem } from './harvest.js';
 import { createPalaceSystem } from './palace.js';
 import { createCurfewSystem } from './curfew.js';
+import { createCareersSystem } from './careers.js';
 import { createPerf } from './perf.js';
 
 const params = new URLSearchParams(location.search);
@@ -234,7 +235,7 @@ async function boot() {
   G.factions = new Factions(G);
   G.economy = new Economy(G);
   G.animals = new Animals(G);
-  for (const make of [createAspirationsSystem, createAlbumSystem, createMissionsSystem, createWarSystem, createLifeEventsSystem, createPastimesSystem, createStandoffSystem, createMemoriesSystem, createSoundscapeSystem, createFuneralsSystem, createAlmanacSystem, createRivalsSystem, createArcherySystem, createArcheryContestSystem, createHuntingSystem, createDynastySystem, createExpeditionsSystem, createMinigamesSystem, createUnderworldSystem, createPoliticsSystem, createSagasSystem, createYutSystem, createWrestleSystem, createForgeSystem, createHorseCourseSystem, createRoyalWorksSystem, createRoyalPowerSystem, createRoyalGuardSystem, createCourtLifeSystem, createVillageDecorSystem, createServantsSystem, createPilgrimageSystem, createAuthoritySystem, createOfficialsSystem, createFortuneSystem, createKinSystem, createHousingSystem, createRidingSystem, createMigrationSystem, createAmbitionSystem, createFamilySystem, createSocietySystem, createHousesSystem, createInheritanceSystem, createHarvestSystem, createPalaceSystem, createCurfewSystem, createTutorialSystem]) { try { G.registerSystem(make(G)); } catch (e) { console.error('system init failed', e); } }
+  for (const make of [createAspirationsSystem, createAlbumSystem, createMissionsSystem, createWarSystem, createLifeEventsSystem, createPastimesSystem, createStandoffSystem, createMemoriesSystem, createSoundscapeSystem, createFuneralsSystem, createAlmanacSystem, createRivalsSystem, createArcherySystem, createArcheryContestSystem, createHuntingSystem, createDynastySystem, createExpeditionsSystem, createMinigamesSystem, createUnderworldSystem, createPoliticsSystem, createSagasSystem, createYutSystem, createWrestleSystem, createForgeSystem, createHorseCourseSystem, createRoyalWorksSystem, createRoyalPowerSystem, createRoyalGuardSystem, createCourtLifeSystem, createVillageDecorSystem, createServantsSystem, createPilgrimageSystem, createAuthoritySystem, createOfficialsSystem, createFortuneSystem, createKinSystem, createHousingSystem, createRidingSystem, createMigrationSystem, createAmbitionSystem, createFamilySystem, createSocietySystem, createHousesSystem, createInheritanceSystem, createHarvestSystem, createPalaceSystem, createCurfewSystem, createCareersSystem, createTutorialSystem]) { try { G.registerSystem(make(G)); } catch (e) { console.error('system init failed', e); } }
   if (!loadData) G.populate(); else G.restore(loadData);
   G.animals.populate(loadData?.animals);
   G.economy.initHouses();
